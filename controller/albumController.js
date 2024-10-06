@@ -22,7 +22,7 @@ const uploadImageToCloudinary = async (imageBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder: 'poc album', // Specify the folder name here
+        folder: "poc album", // Specify the folder name here
       },
       (error, result) => {
         if (error) {
@@ -42,7 +42,6 @@ const deleteLocalFile = (filePath) => {
     if (err) {
       console.error(`Failed to delete local file: ${filePath}`);
     } else {
-      console.log(`Successfully deleted local file: ${filePath}`);
     }
   });
 };
@@ -94,7 +93,6 @@ export const uploadNewAlbum = async (req, res) => {
       album,
     });
   } catch (err) {
-    console.log("Error creating album:", err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -164,106 +162,95 @@ export const deleteAlbum = async (req, res) => {
 
 export const updateAlbum = async (req, res) => {
   try {
-    const { name, imagesToDelete } = req.body;
-    let imagesToDeleteParsed = imagesToDelete;
+    const { albumId } = req.params;
+    const { name, removedImages, newImageOrder } = req.body; // Include newImageOrder
+    const newImages = req.files;
 
-    // If imagesToDelete is a string, parse it into an array
-    if (typeof imagesToDeleteParsed === 'string') {
-      imagesToDeleteParsed = JSON.parse(imagesToDeleteParsed);
-    }
+    // Log the entire request body for debugging
+    console.log("Request Body:", req.body);
+    console.log("New Images:", newImages);
 
-    console.log("Images to delete:", imagesToDeleteParsed);
-
-    // List resources in Cloudinary folder for verification
-    const cloudinaryFolder = 'poc album';
-    const cloudinaryResources = await cloudinary.api.resources({
-      type: 'upload',
-      prefix: cloudinaryFolder,
-    });
-
-    console.log("Cloudinary resources in folder:", cloudinaryResources.resources.map(res => res.public_id));
-
-    // Delete images from Cloudinary if any are provided
-    if (Array.isArray(imagesToDeleteParsed) && imagesToDeleteParsed.length > 0) {
-      const deletePromises = imagesToDeleteParsed.map(public_id => {
-        console.log("Attempting to delete image with public_id:", public_id);
-
-        // Check if the image exists in the Cloudinary folder
-        const imageExists = cloudinaryResources.resources.some(resource => resource.public_id === public_id);
-
-        if (!imageExists) {
-          console.error(`Image with public_id ${public_id} does not exist in Cloudinary.`);
-          return Promise.resolve({ result: 'not found' }); // Skip deletion if not found
-        }
-
-        return cloudinary.uploader.destroy(public_id);
-      });
-
-      const deleteResults = await Promise.all(deletePromises);
-      console.log("Cloudinary delete results:", deleteResults);
-
-      // Check if the delete results contain any failures
-      deleteResults.forEach((result, index) => {
-        if (result.result !== 'ok') {
-          console.error(`Failed to delete image at index ${index}:`, result);
-        }
-      });
-    } else {
-      console.log("No images to delete.");
-    }
-
-    // Upload new images to Cloudinary if any files are provided
-    let uploadedImages = [];
-    if (req.files && req.files.length > 0) {
-      const files = req.files;
-      console.log("Files to upload:", files);
-
-      const uploadPromises = files.map(file => 
-        cloudinary.uploader.upload(file.path, {
-          folder: 'poc album',
-        })
-      );
-
-      const uploadResults = await Promise.all(uploadPromises);
-      uploadedImages = uploadResults.map(result => ({
-        src: result.secure_url,
-        public_id: result.public_id,
-        name: path.basename(result.original_filename),
-      }));
-
-      console.log("Uploaded images:", uploadedImages);
-    } else {
-      console.log("No new images to upload.");
-    }
-
-    // Fetch the album from the database to confirm it exists
-    const album = await Albums.findById(req.params.id);
+    // Find the existing album
+    const album = await Albums.findById(albumId);
     if (!album) {
-      return res.status(404).json({ error: "Album not found" });
+      return res.status(404).json({ message: "Album not found" });
     }
 
-    console.log("Album found:", album);
-
-    // Update the album in the database with the new image data and the album name
-    const updatedAlbum = await Albums.findByIdAndUpdate(
-      req.params.id, 
-      {
-        name,
-        $push: { images: { $each: uploadedImages } },
-      },
-      { new: true }
-    );
-
-    if (!updatedAlbum) {
-      return res.status(404).json({ error: "Album not found" });
+    // Handle removed images
+    let removedImagesArray = [];
+    if (removedImages) {
+      try {
+        removedImagesArray =
+          typeof removedImages === "string"
+            ? JSON.parse(removedImages)
+            : removedImages;
+      } catch (error) {
+        console.error("Error parsing removedImages:", error);
+      }
     }
 
-    console.log("Updated album:", updatedAlbum);
-    
-    // Return the updated album
-    res.status(200).json(updatedAlbum);
-  } catch (err) {
-    console.error("Error during album update:", err);
-    res.status(500).json({ error: "Failed to update album", details: err.message });
+    // Remove images from the album based on the removedImagesArray
+    if (removedImagesArray.length > 0) {
+      for (const imageId of removedImagesArray) {
+        const image = album.images.find(
+          (img) => img._id.toString() === imageId
+        );
+        if (image) {
+          try {
+            // Log the image being deleted from Cloudinary
+            console.log(`Deleting image from Cloudinary: ${image.public_id}`);
+            await cloudinary.uploader.destroy(image.public_id);
+          } catch (error) {
+            console.error(
+              `Error deleting image from Cloudinary: ${error.message}`
+            );
+          }
+          // Remove the image from the album's images array
+          album.images = album.images.filter(
+            (img) => img._id.toString() !== imageId
+          );
+        }
+      }
+    }
+
+    // Handle album name update
+    if (name && name !== album.name) {
+      album.name = name;
+      album.slug = slugify(name, { lower: true });
+    }
+
+    // Handle uploading of new images
+    if (newImages && newImages.length > 0) {
+      for (const newImage of newImages) {
+        const uploadResult = await uploadImageToCloudinary(newImage.buffer);
+        album.images.push({
+          src: uploadResult.secure_url,
+          public_id: uploadResult.public_id,
+          name: newImage.originalname,
+          size: (newImage.size / (1024 * 1024)).toFixed(2), // Convert size to MB
+        });
+      }
+    }
+
+    // Update the images array based on the new order
+    if (newImageOrder) {
+      const reorderedImages = JSON.parse(newImageOrder)
+        .map((imageId) =>
+          album.images.find((img) => img._id.toString() === imageId)
+        )
+        .filter(Boolean); // Filter out any undefined values
+      album.images = reorderedImages; // Reassign the reordered images to the album
+    }
+
+    // Save the updated album
+    await album.save();
+
+    res.status(200).json({
+      message: "Album updated successfully",
+      album,
+    });
+  } catch (error) {
+    console.error("Error updating album:", error);
+    res.status(500).json({ message: error.message });
   }
 };
