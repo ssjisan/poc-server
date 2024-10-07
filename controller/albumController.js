@@ -162,95 +162,61 @@ export const deleteAlbum = async (req, res) => {
 
 export const updateAlbum = async (req, res) => {
   try {
-    const { albumId } = req.params;
-    const { name, removedImages, newImageOrder } = req.body; // Include newImageOrder
-    const newImages = req.files;
+      const { albumName } = req.body;
 
-    // Log the entire request body for debugging
-    console.log("Request Body:", req.body);
-    console.log("New Images:", newImages);
-
-    // Find the existing album
-    const album = await Albums.findById(albumId);
-    if (!album) {
-      return res.status(404).json({ message: "Album not found" });
-    }
-
-    // Handle removed images
-    let removedImagesArray = [];
-    if (removedImages) {
-      try {
-        removedImagesArray =
-          typeof removedImages === "string"
-            ? JSON.parse(removedImages)
-            : removedImages;
-      } catch (error) {
-        console.error("Error parsing removedImages:", error);
+      // Parse existingImages from request body
+      let existingImages = [];
+      if (req.body.existingImages) {
+          existingImages = JSON.parse(req.body.existingImages);
       }
-    }
 
-    // Remove images from the album based on the removedImagesArray
-    if (removedImagesArray.length > 0) {
-      for (const imageId of removedImagesArray) {
-        const image = album.images.find(
-          (img) => img._id.toString() === imageId
-        );
-        if (image) {
+      // Find the album by ID
+      const album = await Albums.findById(req.params.albumId);
+      if (!album) {
+          return res.status(404).json({ message: "Album not found" });
+      }
+
+      // Remove old images that are not in the existingImages array
+      const imagesToRemove = album.images.filter(
+          (image) => !existingImages.some((img) => img.public_id === image.public_id)
+      );
+
+      // Remove images from Cloudinary
+      for (const image of imagesToRemove) {
           try {
-            // Log the image being deleted from Cloudinary
-            console.log(`Deleting image from Cloudinary: ${image.public_id}`);
-            await cloudinary.uploader.destroy(image.public_id);
+              await cloudinary.uploader.destroy(image.public_id);
           } catch (error) {
-            console.error(
-              `Error deleting image from Cloudinary: ${error.message}`
-            );
+              console.error(`Error deleting image from Cloudinary: ${error.message}`);
           }
-          // Remove the image from the album's images array
-          album.images = album.images.filter(
-            (img) => img._id.toString() !== imageId
-          );
-        }
       }
-    }
 
-    // Handle album name update
-    if (name && name !== album.name) {
-      album.name = name;
-      album.slug = slugify(name, { lower: true });
-    }
-
-    // Handle uploading of new images
-    if (newImages && newImages.length > 0) {
-      for (const newImage of newImages) {
-        const uploadResult = await uploadImageToCloudinary(newImage.buffer);
-        album.images.push({
-          src: uploadResult.secure_url,
-          public_id: uploadResult.public_id,
-          name: newImage.originalname,
-          size: (newImage.size / (1024 * 1024)).toFixed(2), // Convert size to MB
-        });
+      // Upload new images to Cloudinary
+      const uploadedImages = [];
+      if (req.files && req.files.length > 0) {
+          for (const file of req.files) {
+              const uploadResult = await uploadImageToCloudinary(file.buffer);
+              uploadedImages.push({
+                  src: uploadResult.secure_url,
+                  public_id: uploadResult.public_id,
+                  name: file.originalname,
+                  size: (file.size / (1024 * 1024)).toFixed(2), // Convert size to MB
+              });
+          }
       }
-    }
 
-    // Update the images array based on the new order
-    if (newImageOrder) {
-      const reorderedImages = JSON.parse(newImageOrder)
-        .map((imageId) =>
-          album.images.find((img) => img._id.toString() === imageId)
-        )
-        .filter(Boolean); // Filter out any undefined values
-      album.images = reorderedImages; // Reassign the reordered images to the album
-    }
+      // Combine existing images and newly uploaded images
+      const finalImages = [...existingImages, ...uploadedImages];
 
-    // Save the updated album
-    await album.save();
+      // Update album with new data
+      album.name = albumName;
+      album.images = finalImages;
 
-    res.status(200).json({
-      message: "Album updated successfully",
-      album,
-    });
-  } catch (error) {
-    console.error("Error updating album:", error);
-    res.status(500).json({ message: error.message });
+      // Save the updated album
+      await album.save();
+
+      res.status(200).json({ message: "Album updated successfully", album });
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: err.message });
   }
 };
