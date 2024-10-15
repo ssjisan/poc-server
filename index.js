@@ -5,6 +5,7 @@ import morgan from "morgan";
 import cors from "cors";
 import authRoutes from "./routers/authRoutes.js";
 import albumRoutes from "./routers/albumRoutes.js";
+import videoRoutes from "./routers/videoRoutes.js";
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use(express.json());
 // router middelware //
 app.use(authRoutes);
 app.use(albumRoutes);
+app.use(videoRoutes);
 
 const port = process.env.PORT || 8001;
 

@@ -6,7 +6,7 @@ import {
   listOfAllAlbums,
   deleteAlbum,
   readAlbum,
-  updateAlbum
+  updateAlbum,
 } from "../controller/albumController.js";
 import multer from "multer";
 
