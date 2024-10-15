@@ -30,6 +30,6 @@ router.put(
   requiredSignIn,
   updateAlbum
 );
-router.post('/update-order', requiredSignIn, updateAlbumSequence);
+router.post('/update-album-order', requiredSignIn, updateAlbumSequence);
 
 export default router;

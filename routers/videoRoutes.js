@@ -14,6 +14,6 @@ router.post(
   uploadNewVideo
 );
 router.get("/list_videos", getVideoList);
-router.post('/update-order', requiredSignIn, updateVideoSequence);
+router.post('/update-video-order', requiredSignIn, updateVideoSequence);
 
 export default router;
