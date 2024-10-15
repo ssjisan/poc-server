@@ -7,6 +7,7 @@ import {
   deleteAlbum,
   readAlbum,
   updateAlbum,
+  updateAlbumSequence
 } from "../controller/albumController.js";
 import multer from "multer";
 
@@ -29,4 +30,6 @@ router.put(
   requiredSignIn,
   updateAlbum
 );
+router.post('/update-order', requiredSignIn, updateAlbumSequence);
+
 export default router;

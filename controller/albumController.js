@@ -220,3 +220,21 @@ export const updateAlbum = async (req, res) => {
       res.status(500).json({ message: err.message });
   }
 };
+
+
+export const updateAlbumSequence = async (req, res) => {
+  try {
+    const { reorderedAlbums } = req.body;
+
+    // Clear the current collection
+    await Albums.deleteMany({});
+
+    // Insert the reordered videos
+    await Albums.insertMany(reorderedAlbums);
+
+    res.status(200).json({ message: "Album sequence updated successfully" });
+  } catch (err) {
+    console.error("Error updating album sequence:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
