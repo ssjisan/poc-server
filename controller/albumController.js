@@ -221,7 +221,7 @@ export const updateAlbum = async (req, res) => {
   }
 };
 
-
+//  Update Sequence of Album
 export const updateAlbumSequence = async (req, res) => {
   try {
     const { reorderedAlbums } = req.body;

@@ -20,14 +20,11 @@ export const uploadNewVideo = async (req, res) => {
         .json({ error: "Please provide a valid YouTube link" });
     }
 
-    // Generate slug using slugify
-    const slug = slugify(title, { lower: true });
-
     // Create new video entry
     const newVideo = new Videos({
       title,
       url,
-      slug, // Save slug generated with slugify
+      slug: slugify(title, { lower: true }),
     });
 
     // Save video to the database
@@ -76,5 +73,100 @@ export const updateVideoSequence = async (req, res) => {
   } catch (err) {
     console.error("Error updating video sequence:", err);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Controller for Delete video
+
+export const deleteVideo = async (req, res) => {
+  try {
+    // Extract slug from the request parameters (assuming it's passed in the URL)
+    const { slug } = req.params;
+
+    // Find the video by the slug and remove it from the database
+    const deletedVideo = await Videos.findOneAndDelete({ slug });
+
+    // If no video is found with the given slug
+    if (!deletedVideo) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    // Respond with success message
+    res.status(200).json({ message: `Video deleted successfully` });
+  } catch (err) {
+    console.error("Error deleting video: ", err);
+
+    // Handle any errors
+    res
+      .status(500)
+      .json({ message: "Failed to delete video. Please try again later." });
+  }
+};
+
+
+// Controller for reading a single video
+export const readVideo = async (req, res) => {
+  try {
+    const { slug } = req.params; // This is correctly pulling albumId from the route parameters.
+    const video = await Videos.findOne({ slug }); // Use findById with albumId
+
+    if (!video) {
+      return res.status(404).json({ error: "Video not found" });
+    }
+    res.json(video);
+  } catch (error) {
+    console.error("Error fetching video:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Controller for Updating a single video
+
+export const updateVideo = async (req, res) => {
+  try {
+    const { slug } = req.params; // Extract slug from the request parameters
+    const { title, url } = req.body; // Destructure title and url from request body
+
+    // Validate input
+    if (!title || !url) {
+      return res.status(400).json({ error: "Title and URL are required" });
+    }
+
+    // Check if the video URL is a valid YouTube link
+    const youtubeRegex =
+      /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+    if (!youtubeRegex.test(url)) {
+      return res
+        .status(400)
+        .json({ error: "Please provide a valid YouTube link" });
+    }
+
+    // Find the video by slug
+    const existingVideo = await Videos.findOne({ slug });
+
+    if (!existingVideo) {
+      return res.status(404).json({ error: "Video not found" });
+    }
+
+    // Update the video details
+    existingVideo.title = title;
+    existingVideo.url = url;
+    existingVideo.slug = slugify(title, { lower: true }); // Update slug based on new title
+
+    // Save the updated video to the database
+    await existingVideo.save();
+
+    // Respond with success message and updated video data
+    res.status(200).json({
+      success: true,
+      message: "Video updated successfully",
+      video: existingVideo,
+    });
+  } catch (error) {
+    console.error("Error updating video: ", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update video. Please try again later.",
+    });
   }
 };

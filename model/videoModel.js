@@ -6,6 +6,10 @@ const videoSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    slug: {
+      type: String,
+      required: true,
+    },
     url: {
       type: String,
       required: true,
