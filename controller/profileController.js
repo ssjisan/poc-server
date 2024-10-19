@@ -35,7 +35,7 @@ const uploadImageToCloudinary = async (imageBuffer) => {
   });
 };
 
-// Create Doctors Profile Controller 
+// Create Doctors Profile Controller
 
 export const createProfile = async (req, res) => {
   try {
@@ -109,12 +109,50 @@ export const createProfile = async (req, res) => {
   }
 };
 
-
 export const listAllDoctors = async (req, res) => {
   try {
     const profiles = await Profile.find();
     res.status(200).json(profiles);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+export const deleteProfile = async (req, res) => {
+  try {
+    const { profileId } = req.params;
+    const profile = await Profile.findByIdAndDelete(profileId);
+
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+
+    // Delete profile photo from Cloudinary
+    if (profile.profilePhoto && profile.profilePhoto.length > 0) {
+      try {
+        const publicId = profile.profilePhoto[0].public_id;
+        await cloudinary.uploader.destroy(publicId);
+      } catch (error) {
+        res.json({ message: error.message });
+      }
+    }
+    res.status(200).json({ message: "Profile deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+export const readProfile = async (req, res) => {
+  try {
+    const { profileId } = req.params;
+    const profile = await Profile.findById(profileId);
+    if (!profile) {
+      return res.status(404).json({ error: "Profile not found" });
+    }
+    res.json(profile);
+  } catch (error) {
+    console.error("Error fetching album:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };

@@ -1,7 +1,12 @@
 // profileRoutes.js
 import express from "express";
 import { requiredSignIn } from "../middlewares/authMiddleware.js";
-import { createProfile,listAllDoctors } from "../controller/profileController.js";
+import {
+  createProfile,
+  listAllDoctors,
+  deleteProfile,
+  readProfile
+} from "../controller/profileController.js";
 import multer from "multer";
 
 // Multer configuration
@@ -18,6 +23,8 @@ router.post(
   upload.single("profilePhoto"),
   createProfile
 );
-router.get("/doctors", requiredSignIn, listAllDoctors);
+router.get("/doctors", listAllDoctors);
+router.delete("/doctor/:profileId", requiredSignIn, deleteProfile);
+router.get("/doctor/:profileId", requiredSignIn, readProfile);
 
 export default router;
