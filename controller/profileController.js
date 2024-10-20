@@ -158,3 +158,65 @@ export const readProfile = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+
+// Update Profile
+
+export const updateProfile = async (req, res) => {
+  try {
+    const { profileId } = req.params;
+    const {
+      name,
+      designation,
+      email,
+      phone,
+      whatsApp,
+      detailsInfo,
+      location,
+      appointmentNumber,
+      consultationDays,
+      consultationTime,
+    } = req.body;
+    const profilePhoto = req.file;
+
+    // Find the existing profile
+    const profile = await Profile.findById(profileId);
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+
+    // Update text fields
+    profile.name = name || profile.name;
+    profile.designation = designation || profile.designation;
+    profile.email = email || profile.email;
+    profile.phone = phone || profile.phone;
+    profile.whatsApp = whatsApp || profile.whatsApp;
+    profile.detailsInfo = detailsInfo || profile.detailsInfo;
+    profile.location = location || profile.location;
+    profile.appointmentNumber = appointmentNumber || profile.appointmentNumber;
+    profile.consultationDays = consultationDays || profile.consultationDays;
+    profile.consultationTime = consultationTime || profile.consultationTime;
+
+    // Handle profile photo update if a new image is uploaded
+    if (profilePhoto) {
+      // Remove the old image from Cloudinary
+      if (profile.profilePhoto && profile.profilePhoto.length > 0) {
+        const publicId = profile.profilePhoto[0].public_id;
+        await cloudinary.uploader.destroy(publicId);
+      }
+
+      // Upload the new image to Cloudinary
+      const uploadedImage = await uploadImageToCloudinary(profilePhoto.buffer);
+      profile.profilePhoto = [uploadedImage]; // Update profile photo
+    }
+
+    // Save updated profile to the database
+    await profile.save();
+
+    // Return updated profile
+    res.status(200).json(profile);
+  } catch (err) {
+    console.error("Error updating profile:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
