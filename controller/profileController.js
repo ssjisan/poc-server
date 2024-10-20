@@ -77,8 +77,8 @@ export const createProfile = async (req, res) => {
         return res.json({ error: "Location is required" });
       case !appointmentNumber.trim():
         return res.json({ error: "Appointment Number is required" });
-      // case !consultationDays.trim():
-      //   return res.json({ error: "Consultation Days is required" });
+      case !Array.isArray(consultationDays) || consultationDays.length === 0:
+        return res.json({ error: "Consultation Days is required" });
       case !consultationTime.trim():
         return res.json({ error: "Consultation Time is required" });
     }
@@ -109,6 +109,7 @@ export const createProfile = async (req, res) => {
   }
 };
 
+// For Get all Data from DB //
 export const listAllDoctors = async (req, res) => {
   try {
     const profiles = await Profile.find();
@@ -118,6 +119,7 @@ export const listAllDoctors = async (req, res) => {
   }
 };
 
+// For Delete Profile //
 export const deleteProfile = async (req, res) => {
   try {
     const { profileId } = req.params;
@@ -142,7 +144,7 @@ export const deleteProfile = async (req, res) => {
   }
 };
 
-
+// For Specific Profile Read //
 export const readProfile = async (req, res) => {
   try {
     const { profileId } = req.params;

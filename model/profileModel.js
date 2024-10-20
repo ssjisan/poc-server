@@ -41,7 +41,7 @@ const profileSchema = new mongoose.Schema(
       required: true,
     },
     consultationDays: {
-      type: [String],
+      type: [Number],
       required: true,
     },
     consultationTime: {
