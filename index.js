@@ -7,6 +7,7 @@ import authRoutes from "./routers/authRoutes.js";
 import albumRoutes from "./routers/albumRoutes.js";
 import videoRoutes from "./routers/videoRoutes.js";
 import profileRoutes from "./routers/profileRoutes.js";
+import appointmentRoutes from "./routers/appointmentRoutes.js"
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use(authRoutes);
 app.use(albumRoutes);
 app.use(videoRoutes);
 app.use(profileRoutes);
+app.use(appointmentRoutes);
 
 const port = process.env.PORT || 8001;
 
