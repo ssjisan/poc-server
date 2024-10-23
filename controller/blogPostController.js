@@ -46,7 +46,10 @@ export const createBlogPost = async (req, res) => {
       return res.status(400).json({ error: "Editor content is required" });
 
     // Generate slug from title
-    const slug = slugify(title, { lower: true, strict: true });
+    const slug = slugify(title, {
+      lower: true,
+      remove: /[&\/\\#,+()$~%.'":*?<>{}]/g, // Remove special symbols but keep Bangla and Unicode characters
+    });
 
     // Check if the category exists (from Treatments model)
     const category = await Treatments.findById(categoryId);
@@ -72,6 +75,64 @@ export const createBlogPost = async (req, res) => {
 
     // Respond with the created blog post
     res.status(201).json(blogPost);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const listAllBlogs = async (req, res) => {
+  try {
+    const blogs = await BlogPost.find();
+    res.status(200).json(blogs);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Get Blog Post by Slug Controller
+export const readBlogPost = async (req, res) => {
+  const { slug } = req.params;
+  try {
+    // Find the blog post using the slug
+    const blogPost = await BlogPost.findOne({ slug });
+    
+    if (!blogPost) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+    // Return the blog post data
+    res.status(200).json(blogPost);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+export const deleteBlogPost = async (req, res) => {
+  const { blogId } = req.params;
+
+  try {
+    // Find the blog post by ID
+    const blogPost = await BlogPost.findById(blogId);
+
+    // If the blog post doesn't exist, return a 404 error
+    if (!blogPost) {
+      return res.status(404).json({ message: "Blog post not found" });
+    }
+
+    // If the blog post has a cover photo, delete it from Cloudinary
+    if (blogPost.coverPhoto && blogPost.coverPhoto.length > 0) {
+      for (let image of blogPost.coverPhoto) {
+        await cloudinary.uploader.destroy(image.public_id); // Remove the image from Cloudinary
+      }
+    }
+
+    // Delete the blog post from the database
+    await blogPost.deleteOne();
+
+    // Respond with a success message
+    res.status(200).json({ message: "Blog post deleted successfully" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Internal server error" });

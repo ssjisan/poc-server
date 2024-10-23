@@ -96,10 +96,30 @@ export const loginUser = async (req, res) => {
 
 export const userList = async (req, res) => {
   try {
-    const user = await UserModel.find({});
-    res.json(user);
+    // Check the current user's role (assuming `req.user` contains authenticated user information)
+    const currentUser = await UserModel.findById(req.user._id);
+
+    if (!currentUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    let users;
+    // If the current user is a super admin, show all users
+    if (currentUser.role === 0) {
+      users = await UserModel.find({});
+    } 
+    // If the current user is an admin, exclude super admins from the list
+    else if (currentUser.role === 1) {
+      users = await UserModel.find({ role: { $ne: 0 } });
+    } else {
+      return res.status(403).json({ error: "Access Denied" });
+    }
+
+    // Send the list of users to the front-end
+    res.json(users);
   } catch (err) {
-    console.log(err.message);
+    console.error(err);
+    res.status(500).json({ error: "Something went wrong" });
   }
 };
 
@@ -107,12 +127,27 @@ export const userList = async (req, res) => {
 
 export const removeUser = async (req, res) => {
   try {
+    // Fetch the user to be removed
+    const userToRemove = await UserModel.findById(req.params.userId);
+    
+    // Check if the logged-in user is trying to delete their own Super Admin account
+    if (req.user.role === 0 && req.user._id.toString() === req.params.userId) {
+      return res.status(400).json({ error: "Super Admin cannot remove their own account" });
+    }
+
+    // Proceed with the deletion if not the same Super Admin account
     const user = await UserModel.findByIdAndDelete(req.params.userId);
-    res.json(user);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({ message: "User removed successfully", user });
   } catch (err) {
+    console.error(err);
     return res.status(400).json({ error: "Access Denied!" });
   }
 };
+
 export const privateRoute = async (req, res) => {
   res.json({ currentUser: req.user });
 };

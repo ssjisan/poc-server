@@ -2,7 +2,10 @@
 import express from "express";
 import { requiredSignIn } from "../middlewares/authMiddleware.js";
 import {
-    createBlogPost
+  createBlogPost,
+  listAllBlogs,
+  readBlogPost,
+  deleteBlogPost
 } from "../controller/blogPostController.js";
 import multer from "multer";
 
@@ -20,8 +23,8 @@ router.post(
   upload.single("coverPhoto"),
   createBlogPost
 );
-// router.get("/doctors", listAllDoctors);
-// router.delete("/doctor/:profileId", requiredSignIn, deleteProfile);
-// router.get("/doctor/:profileId", requiredSignIn, readProfile);
+router.get("/blogs", listAllBlogs);
+router.get("/blog/:slug", readBlogPost);
+router.delete("/blog/:blogId", requiredSignIn, deleteBlogPost);
 // router.put("/doctor/:profileId", requiredSignIn,upload.single("profilePhoto"), updateProfile);
 export default router;

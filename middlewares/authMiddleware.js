@@ -26,3 +26,16 @@ export const isAdmin = async (req, res, next) => {
     res.status(401).json(err.message);
   }
 };
+
+export const isSuperAdmin = async (req, res, next) => {
+  try {
+    const user = await UserModel.findById(req.user._id);
+    if (user.role !== 0) {
+      return res.status(401).send("Unauthorized");
+    } else {
+      next();
+    }
+  } catch (err) {
+    res.status(401).json(err.message);
+  }
+};
