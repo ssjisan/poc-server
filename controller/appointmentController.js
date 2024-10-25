@@ -1,6 +1,7 @@
 import Appointment from "../model/appointmentModel.js";
 import nodemailer from "nodemailer";
 import Profile from "../model/profileModel.js";
+import User from "../model/userModel.js"; // Import your User model
 
 export const submitAppointment = async (req, res) => {
   try {
@@ -108,5 +109,46 @@ export const submitAppointment = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Error submitting appointment" });
+  }
+};
+
+export const getAppointments = async (req, res) => {
+  const userId = req.user._id; // Assuming user ID is available in req.user
+
+  try {
+    // Fetch the user to get the role
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const userRole = user.role; // Extract the user role
+
+    if (userRole === 0) {
+      // If user role is 0 (admin), fetch all appointments
+      const allAppointments = await Appointment.find().populate("doctorInfo", "name email").sort({ createdAt: -1 });
+      return res.status(200).json(allAppointments);
+    } else if (userRole === 1) {
+      // If user role is 1 (doctor), fetch the doctor profile based on the user's email
+      const doctorProfile = await Profile.findOne({ email: user.email }); // Match profile by the email from logged-in user
+
+      if (!doctorProfile) {
+        return res.status(404).json({ message: "Doctor profile not found." });
+      }
+
+      // Fetch only appointments related to the logged-in doctor's profile ID
+      const doctorAppointments = await Appointment.find({
+        doctorInfo: doctorProfile._id // Match doctorInfo with doctor's profile ID
+      }).populate("doctorInfo", "name email").sort({ createdAt: -1 });
+
+      return res.status(200).json(doctorAppointments);
+    } else {
+      // If role is not recognized, send a forbidden response
+      return res.status(403).json({ message: "Access denied." });
+    }
+  } catch (error) {
+    console.error("Error fetching appointments:", error);
+    return res.status(500).json({ message: "An error occurred while fetching appointments." });
   }
 };
