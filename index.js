@@ -10,6 +10,8 @@ import profileRoutes from "./routers/profileRoutes.js";
 import appointmentRoutes from "./routers/appointmentRoutes.js";
 import treatmentsRoutes from "./routers/treatmentsRoutes.js";
 import blogPostRoutes from "./routers/blogPostRoutes.js";
+import journalRoutes from "./routers/journalRoutes.js";
+import formRoutes from "./routers/formRoutes.js";
 
 dotenv.config();
 
@@ -34,6 +36,8 @@ app.use(profileRoutes);
 app.use(appointmentRoutes);
 app.use(treatmentsRoutes);
 app.use(blogPostRoutes);
+app.use(journalRoutes);
+app.use(formRoutes);
 
 const port = process.env.PORT || 8001;
 

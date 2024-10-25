@@ -5,7 +5,8 @@ import {
   createBlogPost,
   listAllBlogs,
   readBlogPost,
-  deleteBlogPost
+  deleteBlogPost,
+  editBlogPost,
 } from "../controller/blogPostController.js";
 import multer from "multer";
 
@@ -26,5 +27,11 @@ router.post(
 router.get("/blogs", listAllBlogs);
 router.get("/blog/:slug", readBlogPost);
 router.delete("/blog/:blogId", requiredSignIn, deleteBlogPost);
-// router.put("/doctor/:profileId", requiredSignIn,upload.single("profilePhoto"), updateProfile);
+router.put(
+  "/blog/:slug",
+  requiredSignIn,
+  upload.single("coverPhoto"),
+  editBlogPost
+);
+
 export default router;

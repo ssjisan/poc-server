@@ -2,6 +2,8 @@ import { v2 as cloudinary } from "cloudinary";
 import slugify from "slugify";
 import BlogPost from "../model/blogModel.js"; // Import BlogPost model
 import Treatments from "../model/treatmentsModel.js"; // Import Treatments model (categories)
+import Profile from "../model/profileModel.js"; // Import Doctor Profile model
+import UserModel from "../model/userModel.js"; // Import Doctor Profile model
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -32,7 +34,7 @@ const uploadImageToCloudinary = async (imageBuffer) => {
   });
 };
 
-// Create Blog Post Controller
+// Create Blog Post Controller Start Here //
 export const createBlogPost = async (req, res) => {
   try {
     const { title, categoryId, editorData } = req.body;
@@ -48,12 +50,33 @@ export const createBlogPost = async (req, res) => {
     // Generate slug from title
     const slug = slugify(title, {
       lower: true,
-      remove: /[&\/\\#,+()$~%.'":*?<>{}]/g, // Remove special symbols but keep Bangla and Unicode characters
+      remove: /[&\/\\#,+()$~%.'":*?<>{}]/g,
     });
 
-    // Check if the category exists (from Treatments model)
+    // Check if the category exists
     const category = await Treatments.findById(categoryId);
     if (!category) return res.status(404).json({ error: "Invalid category" });
+
+    // Fetch the logged-in user's email
+    const userId = req.user._id;
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const userEmail = user.email.trim();
+
+    // Look for profile using email
+    const authorInfo = await Profile.findOne({ email: userEmail });
+
+    // Check if authorInfo is found
+    if (!authorInfo) {
+      return res.status(404).json({ error: "Author profile not found" });
+    }
+
+    const authorName = authorInfo.name;
+    const authorImage = authorInfo.profilePhoto[0].url;
 
     // Upload cover photo to Cloudinary if provided
     let uploadedImage = null;
@@ -65,9 +88,11 @@ export const createBlogPost = async (req, res) => {
     const blogPost = new BlogPost({
       title,
       slug,
-      coverPhoto: uploadedImage ? [uploadedImage] : [], // Save Cloudinary image details
-      category: category._id, // Category ObjectId
-      editorData, // Editor content (Quill data)
+      coverPhoto: uploadedImage ? [uploadedImage] : [],
+      category: category._id,
+      editorData,
+      authorName,
+      authorImage,
     });
 
     // Save the blog post in the database
@@ -76,39 +101,38 @@ export const createBlogPost = async (req, res) => {
     // Respond with the created blog post
     res.status(201).json(blogPost);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
+// List of BLogs Api start here //
 export const listAllBlogs = async (req, res) => {
   try {
-    const blogs = await BlogPost.find();
+    const blogs = await BlogPost.find().sort({ createdAt: -1 });;
     res.status(200).json(blogs);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// Get Blog Post by Slug Controller
+// Get Blog Post by Slug Controller //
 export const readBlogPost = async (req, res) => {
   const { slug } = req.params;
   try {
     // Find the blog post using the slug
     const blogPost = await BlogPost.findOne({ slug });
-    
+
     if (!blogPost) {
       return res.status(404).json({ message: "Blog not found" });
     }
     // Return the blog post data
     res.status(200).json(blogPost);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-
+// Delete Blog by Id start here //
 export const deleteBlogPost = async (req, res) => {
   const { blogId } = req.params;
 
@@ -134,7 +158,74 @@ export const deleteBlogPost = async (req, res) => {
     // Respond with a success message
     res.status(200).json({ message: "Blog post deleted successfully" });
   } catch (err) {
-    console.error(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+// Edit Blog Post Controller //
+export const editBlogPost = async (req, res) => {
+  const { blogId } = req.params;
+  const { title, categoryId, editorData, removeCoverImage } = req.body;
+  const newCoverPhoto = req.file; // For cover photo upload
+
+  try {
+    // Find the blog post by ID
+    const blogPost = await BlogPost.findById(blogId);
+    if (!blogPost) {
+      return res.status(404).json({ error: "Blog post not found" });
+    }
+
+    // Check if the category exists
+    if (categoryId) {
+      const category = await Treatments.findById(categoryId);
+      if (!category) {
+        return res.status(404).json({ error: "Invalid category" });
+      }
+      blogPost.category = category._id;
+    }
+
+    // Update the title and generate a new slug if the title changes
+    if (title) {
+      blogPost.title = title;
+      blogPost.slug = slugify(title, {
+        lower: true,
+        remove: /[&\/\\#,+()$~%.'":*?<>{}]/g,
+      });
+    }
+
+    // Update the editor data if provided
+    if (editorData) {
+      blogPost.editorData = editorData;
+    }
+
+    // Handle cover photo replacement or removal
+    if (removeCoverImage && blogPost.coverPhoto.length > 0) {
+      // If the cover image is marked for removal, delete the existing image from Cloudinary
+      for (let image of blogPost.coverPhoto) {
+        await cloudinary.uploader.destroy(image.public_id);
+      }
+      blogPost.coverPhoto = []; // Set cover photo to empty array
+    }
+
+    if (newCoverPhoto) {
+      // If a new cover photo is uploaded, delete the existing image first
+      if (blogPost.coverPhoto.length > 0) {
+        for (let image of blogPost.coverPhoto) {
+          await cloudinary.uploader.destroy(image.public_id);
+        }
+      }
+      // Upload the new cover photo to Cloudinary
+      const uploadedImage = await uploadImageToCloudinary(newCoverPhoto.buffer);
+      blogPost.coverPhoto = [uploadedImage]; // Update with the new image
+    }
+
+    // Save the updated blog post in the database
+    await blogPost.save();
+
+    // Respond with the updated blog post
+    res.status(200).json(blogPost);
+  } catch (err) {
     res.status(500).json({ message: "Internal server error" });
   }
 };

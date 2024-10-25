@@ -28,6 +28,13 @@ const BlogSchema = new mongoose.Schema(
       type: Object, // Quill's delta format or HTML content
       required: true,
     },
+    authorName: {
+      type: String,
+      required: true,
+    },
+    authorImage: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
