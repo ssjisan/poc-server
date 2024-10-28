@@ -1,5 +1,4 @@
 import express from "express";
-const router = express.Router();
 import { requiredSignIn } from "../middlewares/authMiddleware.js";
 import {
   uploadNewVideo,
@@ -7,17 +6,27 @@ import {
   updateVideoSequence,
   deleteVideo,
   readVideo,
-  updateVideo
+  updateVideo,
 } from "../controller/videoController.js";
+import multer from "multer";
 
-router.post("/upload_video", requiredSignIn, uploadNewVideo);
+// Multer configuration
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+const router = express.Router();
+// Route to upload a new video with an optional thumbnail
+router.post(
+  "/upload_video",
+  requiredSignIn,
+  upload.single("thumbnail"), // Middleware to handle thumbnail upload
+  uploadNewVideo
+);
+
 router.get("/list_videos", getVideoList);
 router.post("/update-video-order", requiredSignIn, updateVideoSequence);
 router.delete("/video/:slug", requiredSignIn, deleteVideo);
 router.get("/video/:slug", readVideo);
-router.put(
-  "/video/:slug",
-  requiredSignIn,
-  updateVideo
-);
+router.put("/video/:slug", requiredSignIn,upload.single("thumbnail"), updateVideo);
+
 export default router;

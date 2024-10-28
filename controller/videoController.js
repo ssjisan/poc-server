@@ -1,49 +1,98 @@
+import { v2 as cloudinary } from "cloudinary";
+import dotenv from "dotenv";
 import Videos from "../model/videoModel.js";
 import slugify from "slugify"; // Assuming you have slugify installed
 
-// Controller for uploading a new video
+dotenv.config();
+
+const CLOUD_NAME = process.env.CLOUD_NAME;
+const API_KEY = process.env.API_KEY;
+const API_SECRET = process.env.API_SECRET;
+
+cloudinary.config({
+  cloud_name: CLOUD_NAME,
+  api_key: API_KEY,
+  api_secret: API_SECRET,
+});
+
+const uploadImageToCloudinary = async (imageBuffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: "poc album/videos", // Specify the folder name here
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve({
+            url: result.secure_url,
+            public_id: result.public_id,
+          });
+        }
+      }
+    );
+    stream.end(imageBuffer);
+  });
+};
+
+
 export const uploadNewVideo = async (req, res) => {
   try {
-    const { title, url } = req.body;
+    const {
+      title, url
+    } = req.body;
+    const thumbnail = req.file;
 
-    // Validate input
-    if (!title || !url) {
-      return res.status(400).json({ error: "Title and URL are required" });
+    // Upload the profile photo to Cloudinary
+    let uploadThumbnail = null;
+    if (thumbnail) {
+      uploadThumbnail = await uploadImageToCloudinary(thumbnail.buffer);
     }
 
-    // Check if the video URL is a valid YouTube link
-    const youtubeRegex =
-      /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
-    if (!youtubeRegex.test(url)) {
-      return res
-        .status(400)
-        .json({ error: "Please provide a valid YouTube link" });
+    // Validate required fields
+    switch (true) {
+      case !title.trim():
+        return res.json({ error: "Name is required" });
+      case !url.trim():
+        return res.json({ error: "Video URL is required" });
     }
 
-    // Create new video entry
-    const newVideo = new Videos({
+// Create video type
+    let videoType;
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+    const googleDriveRegex = /^(https?:\/\/)?(drive\.google\.com\/.*)$/; // Basic regex for Google Drive links
+
+    // Determine video type
+    if (youtubeRegex.test(url)) {
+      videoType = "youtube";
+    } else if (googleDriveRegex.test(url)) {
+      videoType = "google-drive";
+    } else {
+      return res.status(400).json({ error: "Invalid video URL" });
+    }
+
+
+    // Create a new member document
+    const video = new Videos({
+      thumbnail: uploadThumbnail ? [uploadThumbnail] : [], // Store the uploaded image data
       title,
       url,
       slug: slugify(title, { lower: true }),
+      videoType
     });
 
-    // Save video to the database
-    await newVideo.save();
+    // Save the member to the database
+    await video.save();
 
-    // Respond with success
-    res.status(201).json({
-      success: true,
-      message: "Video uploaded successfully",
-      video: newVideo,
-    });
-  } catch (error) {
-    console.error("Error uploading video: ", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to upload video. Please try again later.",
-    });
+    // Send the created member as a response
+    res.status(201).json(video);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: err.message });
   }
 };
+
 
 // Controller for fetching all video
 
@@ -90,7 +139,14 @@ export const deleteVideo = async (req, res) => {
     if (!deletedVideo) {
       return res.status(404).json({ message: "Video not found" });
     }
-
+    if (deletedVideo.thumbnail && deletedVideo.thumbnail.length > 0) {
+      try {
+        const publicId = deletedVideo.thumbnail[0].public_id;
+        await cloudinary.uploader.destroy(publicId);
+      } catch (error) {
+        res.json({ message: error.message });
+      }
+    }
     // Respond with success message
     res.status(200).json({ message: `Video deleted successfully` });
   } catch (err) {
@@ -102,7 +158,6 @@ export const deleteVideo = async (req, res) => {
       .json({ message: "Failed to delete video. Please try again later." });
   }
 };
-
 
 // Controller for reading a single video
 export const readVideo = async (req, res) => {
@@ -124,49 +179,53 @@ export const readVideo = async (req, res) => {
 
 export const updateVideo = async (req, res) => {
   try {
-    const { slug } = req.params; // Extract slug from the request parameters
-    const { title, url } = req.body; // Destructure title and url from request body
+    const { slug } = req.params;
+    const { title, url } = req.body;
+    const newThumbnail = req.file;
 
-    // Validate input
-    if (!title || !url) {
-      return res.status(400).json({ error: "Title and URL are required" });
+    // Find the existing video by ID
+    const video = await Videos.findOne({slug});
+    if (!video) {
+      return res.status(404).json({ message: "Video not found" });
     }
 
-    // Check if the video URL is a valid YouTube link
-    const youtubeRegex =
-      /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
-    if (!youtubeRegex.test(url)) {
-      return res
-        .status(400)
-        .json({ error: "Please provide a valid YouTube link" });
+    // Update text fields
+    video.title = title || video.title;
+    video.url = url || video.url;
+    video.slug = title ? slugify(title, { lower: true }) : video.slug;
+
+    // Determine the video type based on the URL
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+    const googleDriveRegex = /^(https?:\/\/)?(drive\.google\.com\/.*)$/;
+
+    if (youtubeRegex.test(url)) {
+      video.videoType = "youtube";
+    } else if (googleDriveRegex.test(url)) {
+      video.videoType = "google-drive";
+    } else {
+      return res.status(400).json({ error: "Invalid video URL" });
     }
 
-    // Find the video by slug
-    const existingVideo = await Videos.findOne({ slug });
+    // Handle thumbnail update if a new image is uploaded
+    if (newThumbnail) {
+      // Remove the old thumbnail from Cloudinary
+      if (video.thumbnail && video.thumbnail.length > 0) {
+        const publicId = video.thumbnail[0].public_id;
+        await cloudinary.uploader.destroy(publicId);
+      }
 
-    if (!existingVideo) {
-      return res.status(404).json({ error: "Video not found" });
+      // Upload the new thumbnail to Cloudinary
+      const uploadedThumbnail = await uploadImageToCloudinary(newThumbnail.buffer);
+      video.thumbnail = [uploadedThumbnail]; // Update thumbnail data
     }
 
-    // Update the video details
-    existingVideo.title = title;
-    existingVideo.url = url;
-    existingVideo.slug = slugify(title, { lower: true }); // Update slug based on new title
+    // Save updated video to the database
+    await video.save();
 
-    // Save the updated video to the database
-    await existingVideo.save();
-
-    // Respond with success message and updated video data
-    res.status(200).json({
-      success: true,
-      message: "Video updated successfully",
-      video: existingVideo,
-    });
-  } catch (error) {
-    console.error("Error updating video: ", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update video. Please try again later.",
-    });
+    // Return updated video
+    res.status(200).json(video);
+  } catch (err) {
+    console.error("Error updating video:", err);
+    res.status(500).json({ message: err.message });
   }
 };
