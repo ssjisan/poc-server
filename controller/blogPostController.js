@@ -18,7 +18,7 @@ cloudinary.config({
 const uploadImageToCloudinary = async (imageBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: "blog_covers" }, // Upload folder for blog covers
+      { folder: "poc/blog_covers" }, // Upload folder for blog covers
       (error, result) => {
         if (error) {
           reject(error);
@@ -163,15 +163,14 @@ export const deleteBlogPost = async (req, res) => {
 };
 
 
-// Edit Blog Post Controller //
 export const editBlogPost = async (req, res) => {
-  const { blogId } = req.params;
+  const { slug } = req.params; // Get the slug from request params
   const { title, categoryId, editorData, removeCoverImage } = req.body;
   const newCoverPhoto = req.file; // For cover photo upload
 
   try {
-    // Find the blog post by ID
-    const blogPost = await BlogPost.findById(blogId);
+    // Find the blog post by slug
+    const blogPost = await BlogPost.findOne({ slug }); // Use findOne to find by slug
     if (!blogPost) {
       return res.status(404).json({ error: "Blog post not found" });
     }
@@ -226,6 +225,7 @@ export const editBlogPost = async (req, res) => {
     // Respond with the updated blog post
     res.status(200).json(blogPost);
   } catch (err) {
+    console.error("Error editing blog post:", err); // Log the error for debugging
     res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -19,7 +19,7 @@ const uploadImageToCloudinary = async (imageBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder: "poc album/videos", // Specify the folder name here
+        folder: "poc/videos", // Specify the folder name here
       },
       (error, result) => {
         if (error) {

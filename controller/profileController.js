@@ -18,7 +18,7 @@ const uploadImageToCloudinary = async (imageBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder: "poc album/doctors", // Specify the folder name here
+        folder: "poc/doctors", // Specify the folder name here
       },
       (error, result) => {
         if (error) {
@@ -158,7 +158,6 @@ export const readProfile = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
 
 // Update Profile
 
