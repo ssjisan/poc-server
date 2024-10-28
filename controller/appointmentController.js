@@ -95,7 +95,7 @@ export const submitAppointment = async (req, res) => {
       attachments: [
         {
           filename: "logo.png",
-          path: "https://res.cloudinary.com/dzdjgu1vc/image/upload/v1729527492/poc%20album/Logo/ykfwvcnqrdrq5k8ibwcb.png",
+          path: "https://res.cloudinary.com/dzdjgu1vc/image/upload/v1730148367/poc/logo/mjwabftsm6wnyfaegusz.png",
           cid: "logoImage",
         },
       ],

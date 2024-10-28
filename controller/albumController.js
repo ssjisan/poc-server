@@ -22,7 +22,7 @@ const uploadImageToCloudinary = async (imageBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder: "poc album", // Specify the folder name here
+        folder: "poc/poc album", // Specify the folder name here
       },
       (error, result) => {
         if (error) {
@@ -162,62 +162,63 @@ export const deleteAlbum = async (req, res) => {
 
 export const updateAlbum = async (req, res) => {
   try {
-      const { albumName } = req.body;
+    const { albumName } = req.body;
 
-      // Parse existingImages from request body
-      let existingImages = [];
-      if (req.body.existingImages) {
-          existingImages = JSON.parse(req.body.existingImages);
+    // Parse existingImages from request body
+    let existingImages = [];
+    if (req.body.existingImages) {
+      existingImages = JSON.parse(req.body.existingImages);
+    }
+
+    // Find the album by ID
+    const album = await Albums.findById(req.params.albumId);
+    if (!album) {
+      return res.status(404).json({ message: "Album not found" });
+    }
+
+    // Remove old images that are not in the existingImages array
+    const imagesToRemove = album.images.filter(
+      (image) =>
+        !existingImages.some((img) => img.public_id === image.public_id)
+    );
+
+    // Remove images from Cloudinary
+    for (const image of imagesToRemove) {
+      try {
+        await cloudinary.uploader.destroy(image.public_id);
+      } catch (error) {
+        console.error(`Error deleting image from Cloudinary: ${error.message}`);
       }
+    }
 
-      // Find the album by ID
-      const album = await Albums.findById(req.params.albumId);
-      if (!album) {
-          return res.status(404).json({ message: "Album not found" });
+    // Upload new images to Cloudinary
+    const uploadedImages = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const uploadResult = await uploadImageToCloudinary(file.buffer);
+        uploadedImages.push({
+          src: uploadResult.secure_url,
+          public_id: uploadResult.public_id,
+          name: file.originalname,
+          size: (file.size / (1024 * 1024)).toFixed(2), // Convert size to MB
+        });
       }
+    }
 
-      // Remove old images that are not in the existingImages array
-      const imagesToRemove = album.images.filter(
-          (image) => !existingImages.some((img) => img.public_id === image.public_id)
-      );
+    // Combine existing images and newly uploaded images
+    const finalImages = [...existingImages, ...uploadedImages];
 
-      // Remove images from Cloudinary
-      for (const image of imagesToRemove) {
-          try {
-              await cloudinary.uploader.destroy(image.public_id);
-          } catch (error) {
-              console.error(`Error deleting image from Cloudinary: ${error.message}`);
-          }
-      }
+    // Update album with new data
+    album.name = albumName;
+    album.images = finalImages;
 
-      // Upload new images to Cloudinary
-      const uploadedImages = [];
-      if (req.files && req.files.length > 0) {
-          for (const file of req.files) {
-              const uploadResult = await uploadImageToCloudinary(file.buffer);
-              uploadedImages.push({
-                  src: uploadResult.secure_url,
-                  public_id: uploadResult.public_id,
-                  name: file.originalname,
-                  size: (file.size / (1024 * 1024)).toFixed(2), // Convert size to MB
-              });
-          }
-      }
+    // Save the updated album
+    await album.save();
 
-      // Combine existing images and newly uploaded images
-      const finalImages = [...existingImages, ...uploadedImages];
-
-      // Update album with new data
-      album.name = albumName;
-      album.images = finalImages;
-
-      // Save the updated album
-      await album.save();
-
-      res.status(200).json({ message: "Album updated successfully", album });
+    res.status(200).json({ message: "Album updated successfully", album });
   } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: err.message });
+    console.error(err);
+    res.status(500).json({ message: err.message });
   }
 };
 
