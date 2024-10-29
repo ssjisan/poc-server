@@ -24,8 +24,22 @@ mongoose
   .then(() => console.log("Database connected"))
   .catch((err) => console.error(err));
 
+// CORS configuration
+const corsOptions = {
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://pediatricorthocare.com",
+    "https://admin.pediatricorthocare.com",
+    "http://admin.pediatricorthocare.com",
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true, // Enable if you're using cookies or other credentials
+};
+
 // Middlewares
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(morgan("dev"));
 app.use(express.json());
 
