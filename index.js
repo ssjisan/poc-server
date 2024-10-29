@@ -27,10 +27,10 @@ mongoose
 const corsOptions = {
   origin: [
     "http://localhost:5174",
-    "https://pediatricorthocare.com/",
-    "https://admin.pediatricorthocare.com/",
-    "http://admin.pediatricorthocare.com",
-  ], // Add all allowed frontend origins here
+    "https://pediatricorthocare.com",
+    "https://admin.pediatricorthocare.com",
+    "http://admin.pediatricorthocare.com"
+  ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true, // Enable if you're using cookies or other credentials
