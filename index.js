@@ -12,9 +12,10 @@ import treatmentsRoutes from "./routers/treatmentsRoutes.js";
 import blogPostRoutes from "./routers/blogPostRoutes.js";
 import journalRoutes from "./routers/journalRoutes.js";
 import formRoutes from "./routers/formRoutes.js";
+import exerciseVideoRoutes from "./routers/exerciseVideoRoutes.js";
 
 dotenv.config();
-
+// exercise
 const app = express();
 
 // Connect to the database
@@ -26,10 +27,11 @@ mongoose
 // CORS configuration
 const corsOptions = {
   origin: [
+    "http://localhost:5173",
     "http://localhost:5174",
     "https://pediatricorthocare.com",
     "https://admin.pediatricorthocare.com",
-    "http://admin.pediatricorthocare.com"
+    "http://admin.pediatricorthocare.com",
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -45,6 +47,7 @@ app.use(express.json());
 app.use(authRoutes);
 app.use(albumRoutes);
 app.use(videoRoutes);
+app.use(exerciseVideoRoutes);
 app.use(profileRoutes);
 app.use(appointmentRoutes);
 app.use(treatmentsRoutes);
