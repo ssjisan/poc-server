@@ -44,7 +44,7 @@ export const submitAppointment = async (req, res) => {
 
     const mailOptions = {
       from: {
-        name:"Pediatric Orthopaedics Care",
+        name:"Pediatric Orthocare",
         address: process.env.EMAIL_USER
       },
       to: doctor.email,
