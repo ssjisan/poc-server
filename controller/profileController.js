@@ -35,77 +35,111 @@ const uploadImageToCloudinary = async (imageBuffer) => {
   });
 };
 
-// Create Doctors Profile Controller
+// the Cloudinary upload function
 
 export const createProfile = async (req, res) => {
   try {
-    const {
-      name,
-      designation,
-      email,
-      phone,
-      whatsApp,
-      detailsInfo,
-      location,
-      appointmentNumber,
-      consultationDays,
-      consultationTime,
-    } = req.body;
+    let { name, designation, email, phone, whatsApp, detailsInfo, serialInfo } =
+      req.body;
     const profilePhoto = req.file;
 
-    // Upload the profile photo to Cloudinary
+    // Parse serialInfo if it comes as a string
+    if (typeof serialInfo === "string") {
+      try {
+        serialInfo = JSON.parse(serialInfo);
+      } catch (err) {
+        console.error("Failed to parse serialInfo:", err);
+        return res.status(400).json({ error: "Invalid format for serialInfo" });
+      }
+    }
+
+    console.log("Parsed serialInfo:", serialInfo);
+
+    // Validate required fields with improved checks
+    if (!name || !name.trim())
+      return res.status(400).json({ error: "Name is required" });
+    if (!designation || !designation.trim())
+      return res.status(400).json({ error: "Designation is required" });
+    if (!email || !email.trim())
+      return res.status(400).json({ error: "Email is required" });
+    if (!phone || !phone.trim())
+      return res.status(400).json({ error: "Phone is required" });
+    if (!whatsApp || !whatsApp.trim())
+      return res.status(400).json({ error: "WhatsApp Number is required" });
+    if (!detailsInfo || !detailsInfo.trim())
+      return res
+        .status(400)
+        .json({ error: "Details info about doctor is required" });
+    if (!Array.isArray(serialInfo) || serialInfo.length === 0) {
+      return res.status(400).json({
+        error: "Serial info (location, appointmentNumber, etc.) is required",
+      });
+    }
+
+    // Loop through serialInfo to validate each entry
+    for (let i = 0; i < serialInfo.length; i++) {
+      const {
+        location,
+        appointmentNumber,
+        consultationDays,
+        consultationTime,
+      } = serialInfo[i];
+
+      if (!location || !location.trim())
+        return res
+          .status(400)
+          .json({ error: `Location is required for entry ${i + 1}` });
+      if (!appointmentNumber || !appointmentNumber.trim())
+        return res
+          .status(400)
+          .json({ error: `Appointment Number is required for entry ${i + 1}` });
+      if (!Array.isArray(consultationDays) || consultationDays.length === 0) {
+        return res
+          .status(400)
+          .json({ error: `Consultation Days are required for entry ${i + 1}` });
+      }
+      if (!consultationTime || !consultationTime.trim()) {
+        return res
+          .status(400)
+          .json({ error: `Consultation Time is required for entry ${i + 1}` });
+      }
+    }
+
+    // Upload the profile photo to Cloudinary if provided
     let uploadedImage = null;
     if (profilePhoto) {
-      uploadedImage = await uploadImageToCloudinary(profilePhoto.buffer);
+      try {
+        uploadedImage = await uploadImageToCloudinary(profilePhoto.buffer);
+      } catch (err) {
+        console.error("Error uploading image to Cloudinary:", err);
+        return res
+          .status(500)
+          .json({ error: "Failed to upload profile photo" });
+      }
     }
 
-    // Validate required fields
-    switch (true) {
-      case !name.trim():
-        return res.json({ error: "Name is required" });
-      case !designation.trim():
-        return res.json({ error: "Designation is required" });
-      case !email.trim():
-        return res.json({ error: "Email is required" });
-      case !phone.trim():
-        return res.json({ error: "Phone is required" });
-      case !whatsApp.trim():
-        return res.json({ error: "WhatsApp Number is required" });
-      case !detailsInfo.trim():
-        return res.json({ error: "Details info about doctor is required" });
-      case !location.trim():
-        return res.json({ error: "Location is required" });
-      case !appointmentNumber.trim():
-        return res.json({ error: "Appointment Number is required" });
-      case !Array.isArray(consultationDays) || consultationDays.length === 0:
-        return res.json({ error: "Consultation Days is required" });
-      case !consultationTime.trim():
-        return res.json({ error: "Consultation Time is required" });
-    }
-
-    // Create a new member document
+    // Create a new profile document based on the validated data
     const profile = new Profile({
-      profilePhoto: uploadedImage ? [uploadedImage] : [], // Store the uploaded image data
+      profilePhoto: uploadedImage
+        ? [{ url: uploadedImage.url, public_id: uploadedImage.public_id }]
+        : [],
       name,
       designation,
       email,
       phone,
       whatsApp,
       detailsInfo,
-      location,
-      appointmentNumber,
-      consultationDays,
-      consultationTime,
+      serialInfo, // Use serialInfo passed from the body
     });
 
-    // Save the member to the database
+    // Save the new profile document to the database
     await profile.save();
 
-    // Send the created member as a response
+    // Respond with the created profile
     res.status(201).json(profile);
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: err.message });
+    console.error("Error creating profile:", err);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -114,6 +148,19 @@ export const listAllDoctors = async (req, res) => {
   try {
     const profiles = await Profile.find();
     res.status(200).json(profiles);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const listAvailableDoctors = async (req, res) => {
+  try {
+    const profiles = await Profile.find();
+
+    // Exclude the doctor at index 2 (adjust index if needed)
+    const filteredProfiles = profiles.filter((_, index) => index !== 2);
+
+    res.status(200).json(filteredProfiles); // Send the filtered profiles without the doctor at index 2
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -162,60 +209,109 @@ export const readProfile = async (req, res) => {
 // Update Profile
 
 export const updateProfile = async (req, res) => {
+
   try {
     const { profileId } = req.params;
-    const {
-      name,
-      designation,
-      email,
-      phone,
-      whatsApp,
-      detailsInfo,
-      location,
-      appointmentNumber,
-      consultationDays,
-      consultationTime,
-    } = req.body;
+    let { name, designation, email, phone, whatsApp, detailsInfo } = req.body;
+    let serialInfo = req.body.serialInfo || []; // Initialize serialInfo if it's not already defined
     const profilePhoto = req.file;
 
-    // Find the existing profile
+    // Reconstruct serialInfo from the flattened request body
+    if (req.body['serialInfo[0].location']) {
+      serialInfo = [];
+      let i = 0;
+      // Collect serialInfo based on index
+      while (req.body[`serialInfo[${i}].location`]) {
+        const location = req.body[`serialInfo[${i}].location`];
+        const appointmentNumber = req.body[`serialInfo[${i}].appointmentNumber`];
+        const consultationDays = [];
+        
+        // Collect all consultationDays for this index
+        let dayIndex = 0;
+        while (req.body[`serialInfo[${i}].consultationDays[${dayIndex}]`]) {
+          consultationDays.push(req.body[`serialInfo[${i}].consultationDays[${dayIndex}]`]);
+          dayIndex++;
+        }
+
+        const consultationTime = req.body[`serialInfo[${i}].consultationTime`];
+
+        serialInfo.push({
+          location,
+          appointmentNumber,
+          consultationDays,
+          consultationTime,
+        });
+
+        i++; // Move to the next index
+      }
+    }
+
+    // Validation for required fields
+    if (!name || !name.trim()) return res.status(400).json({ error: "Name is required" });
+    if (!designation || !designation.trim()) return res.status(400).json({ error: "Designation is required" });
+    if (!email || !email.trim()) return res.status(400).json({ error: "Email is required" });
+    if (!phone || !phone.trim()) return res.status(400).json({ error: "Phone is required" });
+    if (!whatsApp || !whatsApp.trim()) return res.status(400).json({ error: "WhatsApp Number is required" });
+    if (!detailsInfo || !detailsInfo.trim()) return res.status(400).json({ error: "Details info about doctor is required" });
+    if (!Array.isArray(serialInfo) || serialInfo.length === 0) {
+      return res.status(400).json({
+        error: "Serial info (location, appointmentNumber, etc.) is required",
+      });
+    }
+
+    // Validate each entry in serialInfo
+    for (let i = 0; i < serialInfo.length; i++) {
+      const { location, appointmentNumber, consultationDays, consultationTime } = serialInfo[i];
+
+      if (!location || !location.trim()) {
+        return res.status(400).json({ error: `Location is required for entry ${i + 1}` });
+      }
+      if (!appointmentNumber || !appointmentNumber.trim()) {
+        return res.status(400).json({ error: `Appointment Number is required for entry ${i + 1}` });
+      }
+      if (!Array.isArray(consultationDays) || consultationDays.length === 0) {
+        return res.status(400).json({ error: `Consultation Days are required for entry ${i + 1}` });
+      }
+      if (!consultationTime || !consultationTime.trim()) {
+        return res.status(400).json({ error: `Consultation Time is required for entry ${i + 1}` });
+      }
+    }
+
+    // Find and update the profile in the database
     const profile = await Profile.findById(profileId);
     if (!profile) {
       return res.status(404).json({ message: "Profile not found" });
     }
 
-    // Update text fields
+    // Update profile fields
     profile.name = name || profile.name;
     profile.designation = designation || profile.designation;
     profile.email = email || profile.email;
     profile.phone = phone || profile.phone;
     profile.whatsApp = whatsApp || profile.whatsApp;
     profile.detailsInfo = detailsInfo || profile.detailsInfo;
-    profile.location = location || profile.location;
-    profile.appointmentNumber = appointmentNumber || profile.appointmentNumber;
-    profile.consultationDays = consultationDays || profile.consultationDays;
-    profile.consultationTime = consultationTime || profile.consultationTime;
+    profile.serialInfo = serialInfo || profile.serialInfo; // Update serial info
 
     // Handle profile photo update if a new image is uploaded
     if (profilePhoto) {
-      // Remove the old image from Cloudinary
+      // Remove old profile photo from Cloudinary (if any)
       if (profile.profilePhoto && profile.profilePhoto.length > 0) {
         const publicId = profile.profilePhoto[0].public_id;
         await cloudinary.uploader.destroy(publicId);
       }
 
-      // Upload the new image to Cloudinary
+      // Upload new profile photo to Cloudinary
       const uploadedImage = await uploadImageToCloudinary(profilePhoto.buffer);
       profile.profilePhoto = [uploadedImage]; // Update profile photo
     }
 
-    // Save updated profile to the database
+    // Save updated profile
     await profile.save();
 
-    // Return updated profile
+    // Return the updated profile in response
     res.status(200).json(profile);
   } catch (err) {
     console.error("Error updating profile:", err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "An error occurred while updating the profile" });
   }
 };

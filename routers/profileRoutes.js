@@ -7,6 +7,7 @@ import {
   deleteProfile,
   readProfile,
   updateProfile,
+  listAvailableDoctors
 } from "../controller/profileController.js";
 import multer from "multer";
 
@@ -25,6 +26,7 @@ router.post(
   createProfile
 );
 router.get("/doctors", listAllDoctors);
+router.get("/availableDoctors", listAvailableDoctors);
 router.delete("/doctor/:profileId", requiredSignIn, deleteProfile);
 router.get("/doctor/:profileId", requiredSignIn, readProfile);
 router.put("/doctor/:profileId", requiredSignIn,upload.single("profilePhoto"), updateProfile);

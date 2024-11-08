@@ -32,22 +32,26 @@ const profileSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    location: {
-      type: String,
-      required: true,
-    },
-    appointmentNumber: {
-      type: String, // Extra phone field in serial information
-      required: true,
-    },
-    consultationDays: {
-      type: [Number],
-      required: true,
-    },
-    consultationTime: {
-      type: String,
-      required: true,
-    },
+    serialInfo: [
+      {
+        location: {
+          type: String,
+          required: true,
+        },
+        appointmentNumber: {
+          type: String,
+          required: true,
+        },
+        consultationDays: {
+          type: [Number],
+          required: true,
+        },
+        consultationTime: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );
