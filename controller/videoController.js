@@ -36,12 +36,9 @@ const uploadImageToCloudinary = async (imageBuffer) => {
   });
 };
 
-
 export const uploadNewVideo = async (req, res) => {
   try {
-    const {
-      title, url
-    } = req.body;
+    const { title, url } = req.body;
     const thumbnail = req.file;
 
     // Upload the profile photo to Cloudinary
@@ -58,9 +55,10 @@ export const uploadNewVideo = async (req, res) => {
         return res.json({ error: "Video URL is required" });
     }
 
-// Create video type
+    // Create video type
     let videoType;
-    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+    const youtubeRegex =
+      /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
     const googleDriveRegex = /^(https?:\/\/)?(drive\.google\.com\/.*)$/; // Basic regex for Google Drive links
 
     // Determine video type
@@ -72,14 +70,18 @@ export const uploadNewVideo = async (req, res) => {
       return res.status(400).json({ error: "Invalid video URL" });
     }
 
-
+    // Generate slug from title
+    const slug = slugify(title, {
+      lower: true,
+      remove: /[&\/\\#,+()$~%.'":*?<>{}]/g,
+    });
     // Create a new member document
     const video = new Videos({
       thumbnail: uploadThumbnail ? [uploadThumbnail] : [], // Store the uploaded image data
       title,
       url,
-      slug: slugify(title, { lower: true }),
-      videoType
+      slug,
+      videoType,
     });
 
     // Save the member to the database
@@ -92,7 +94,6 @@ export const uploadNewVideo = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
 
 // Controller for fetching all video
 
@@ -184,7 +185,7 @@ export const updateVideo = async (req, res) => {
     const newThumbnail = req.file;
 
     // Find the existing video by ID
-    const video = await Videos.findOne({slug});
+    const video = await Videos.findOne({ slug });
     if (!video) {
       return res.status(404).json({ message: "Video not found" });
     }
@@ -192,10 +193,16 @@ export const updateVideo = async (req, res) => {
     // Update text fields
     video.title = title || video.title;
     video.url = url || video.url;
-    video.slug = title ? slugify(title, { lower: true }) : video.slug;
+    video.slug = title
+      ? slugify(title, {
+          lower: true,
+          remove: /[&\/\\#,+()$~%.'":*?<>{}]/g,
+        })
+      : video.slug;
 
     // Determine the video type based on the URL
-    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+    const youtubeRegex =
+      /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
     const googleDriveRegex = /^(https?:\/\/)?(drive\.google\.com\/.*)$/;
 
     if (youtubeRegex.test(url)) {
@@ -215,7 +222,9 @@ export const updateVideo = async (req, res) => {
       }
 
       // Upload the new thumbnail to Cloudinary
-      const uploadedThumbnail = await uploadImageToCloudinary(newThumbnail.buffer);
+      const uploadedThumbnail = await uploadImageToCloudinary(
+        newThumbnail.buffer
+      );
       video.thumbnail = [uploadedThumbnail]; // Update thumbnail data
     }
 

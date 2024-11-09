@@ -8,7 +8,7 @@ const Appointment = new mongoose.Schema(
       ref: "Profile",
       required: true,
     },
-    preferredDate: {
+    appointmentDate: {
       type: Date,
       required: true,
     },
@@ -23,6 +23,10 @@ const Appointment = new mongoose.Schema(
     email: {
       type: String,
       required: true,
+    },
+    selectedLocation: {
+      type: String,
+      required: false,
     },
     message: {
       type: String,
