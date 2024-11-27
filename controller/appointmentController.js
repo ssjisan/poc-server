@@ -93,12 +93,10 @@ export const submitAppointment = async (req, res) => {
               <tr>
                 <td><strong>Date:</strong></td>
                 <td style="color: #f44336; font-size: 18px;">
-                  ${new Date(appointmentDate).toLocaleDateString("en-US", {
-                    weekday: "long",
+                  ${new Date(data.appointmentDate).toLocaleDateString("en-US", {
+                    day: "2-digit",
+                    month: "short",
                     year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                    timeZone: "UTC"
                   })}
                 </td>
               </tr>
