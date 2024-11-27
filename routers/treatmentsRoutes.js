@@ -9,8 +9,8 @@ import {
   deleteTreatment
 } from "../controller/treatmentsController.js";
 
-router.post("/create_treatment", requiredSignIn, createTreatment);
-router.get("/treatments_list", listOfTreatments);
+router.post("/create_guidance", requiredSignIn, createTreatment);
+router.get("/guidance_list", listOfTreatments);
 router.delete("/treatment/:treatmentId", requiredSignIn, deleteTreatment);
 router.get("/treatment/:treatmentId", readTreatment);
 router.put("/treatment/:treatmentId", requiredSignIn, updateTreatment);
