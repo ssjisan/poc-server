@@ -108,7 +108,7 @@ export const createBlogPost = async (req, res) => {
 // List of BLogs Api start here //
 export const listAllBlogs = async (req, res) => {
   try {
-    const blogs = await BlogPost.find().sort({ createdAt: -1 });;
+    const blogs = await BlogPost.find();
     res.status(200).json(blogs);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -226,6 +226,24 @@ export const editBlogPost = async (req, res) => {
     res.status(200).json(blogPost);
   } catch (err) {
     console.error("Error editing blog post:", err); // Log the error for debugging
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+//  Update Sequence of Blog
+export const updateBlogsSequence = async (req, res) => {
+  try {
+    const { reorderedBlogs } = req.body;
+
+    // Clear the current collection
+    await BlogPost.deleteMany({});
+
+    // Insert the reordered blogs
+    await BlogPost.insertMany(reorderedBlogs);
+
+    res.status(200).json({ message: "Blogs sequence updated successfully" });
+  } catch (err) {
+    console.error("Error updating Blogs sequence:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 };

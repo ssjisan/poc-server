@@ -238,3 +238,26 @@ export const updateVideo = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+
+// Controller for fetching a limited number of videos
+export const getLimitedVideo = async (req, res) => {
+  try {
+    // Parse limit and skip from query parameters
+    const limit = parseInt(req.query.limit) || 1; // Default to 5 if not provided
+    const skip = parseInt(req.query.skip) || 0; // Default to 0 if not provided
+
+    // Fetch videos from the database with limit and skip
+    const videos = await Videos.find().skip(skip).limit(limit);
+
+    // Check if there are more videos left to load
+    const totalVideos = await Videos.countDocuments();
+    const hasMore = skip + limit < totalVideos;
+
+    // Respond with the videos and whether more videos are available
+    res.status(200).json({ videos, hasMore });
+  } catch (err) {
+    console.error("Error fetching limited videos:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

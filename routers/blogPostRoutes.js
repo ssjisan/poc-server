@@ -7,6 +7,7 @@ import {
   readBlogPost,
   deleteBlogPost,
   editBlogPost,
+  updateBlogsSequence,
 } from "../controller/blogPostController.js";
 import multer from "multer";
 
@@ -33,5 +34,7 @@ router.put(
   upload.single("coverPhoto"),
   editBlogPost
 );
+router.post("/update-blogs-order", requiredSignIn, updateBlogsSequence);
 
 export default router;
+

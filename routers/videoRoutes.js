@@ -7,6 +7,7 @@ import {
   deleteVideo,
   readVideo,
   updateVideo,
+  getLimitedVideo
 } from "../controller/videoController.js";
 import multer from "multer";
 
@@ -24,6 +25,7 @@ router.post(
 );
 
 router.get("/list_videos", getVideoList);
+router.get("/videos", getLimitedVideo);
 router.post("/update-video-order", requiredSignIn, updateVideoSequence);
 router.delete("/video/:slug", requiredSignIn, deleteVideo);
 router.get("/video/:slug", readVideo);

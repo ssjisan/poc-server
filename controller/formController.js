@@ -94,3 +94,20 @@ export const updateForm = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' }); // Handle server errors
   }
 };
+
+export const updateFormsSequence = async (req, res) => {
+  try {
+    const { reorderedForms } = req.body;
+
+    // Clear the current collection
+    await Form.deleteMany({});
+
+    // Insert the reordered forms
+    await Form.insertMany(reorderedForms);
+
+    res.status(200).json({ message: "Forms sequence updated successfully" });
+  } catch (err) {
+    console.error("Error updating forms sequence:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
