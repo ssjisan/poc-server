@@ -70,7 +70,7 @@ const uploadNewVideo = async (req, res) => {
 // Get all videos
 const getVideoList = async (req, res) => {
   try {
-    const videos = await Videos.find();
+    const videos = await Videos.find().sort({ order: 1 });
     res.status(200).json(videos);
   } catch (err) {
     console.error("Error fetching videos:", err);
@@ -84,7 +84,10 @@ const getLimitedVideo = async (req, res) => {
     const limit = parseInt(req.query.limit) || 1;
     const skip = parseInt(req.query.skip) || 0;
 
-    const videos = await Videos.find().skip(skip).limit(limit);
+    const videos = await Videos.find()
+      .sort({ order: 1 })
+      .skip(skip)
+      .limit(limit);
     const totalVideos = await Videos.countDocuments();
     const hasMore = skip + limit < totalVideos;
 
@@ -99,8 +102,18 @@ const getLimitedVideo = async (req, res) => {
 const updateVideoSequence = async (req, res) => {
   try {
     const { reorderedVideos } = req.body;
-    await Videos.deleteMany({});
-    await Videos.insertMany(reorderedVideos);
+
+    const bulkOps = reorderedVideos.map((video) => ({
+      updateOne: {
+        filter: { _id: video._id },
+        update: { $set: { order: video.order } },
+      },
+    }));
+
+    if (bulkOps.length > 0) {
+      await Videos.bulkWrite(bulkOps);
+    }
+
     res.status(200).json({ message: "Video sequence updated successfully" });
   } catch (err) {
     console.error("Error updating video sequence:", err);

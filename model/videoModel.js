@@ -22,8 +22,12 @@ const videoSchema = new mongoose.Schema(
     ],
     videoType: {
       type: String,
-      enum: ["youtube", "google-drive"], // Enum to restrict to the two types
+      enum: ["youtube", "google-drive"],
       required: true,
+    },
+    order: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true }

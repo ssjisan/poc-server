@@ -69,7 +69,7 @@ const uploadNewExerciseVideo = async (req, res) => {
 // Get all exercise videos
 const getExerciseVideoList = async (req, res) => {
   try {
-    const videos = await ExerciseVideos.find();
+    const videos = await ExerciseVideos.find().sort({ order: 1 });
     res.status(200).json(videos);
   } catch (err) {
     console.error(err);
@@ -81,11 +81,21 @@ const getExerciseVideoList = async (req, res) => {
 const updateExerciseVideoSequence = async (req, res) => {
   try {
     const { reorderedVideos } = req.body;
-    await ExerciseVideos.deleteMany({});
-    await ExerciseVideos.insertMany(reorderedVideos);
+
+    const bulkOps = reorderedVideos.map((video) => ({
+      updateOne: {
+        filter: { _id: video._id },
+        update: { $set: { order: video.order } },
+      },
+    }));
+
+    if (bulkOps.length > 0) {
+      await ExerciseVideos.bulkWrite(bulkOps);
+    }
+
     res.status(200).json({ message: "Video sequence updated successfully" });
   } catch (err) {
-    console.error(err);
+    console.error("Error updating video sequence:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 };
