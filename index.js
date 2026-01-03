@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const morgan = require("morgan");
 const cors = require("cors");
 
+const webMessage = require("./helper/webMessage.js");
 const authRoutes = require("./routers/authRoutes");
 const albumRoutes = require("./routers/albumRoutes");
 const videoRoutes = require("./routers/videoRoutes");
@@ -45,9 +46,10 @@ app.use(formRoutes);
 const port = process.env.PORT || 8101;
 
 app.get("/", (req, res) => {
-  res.send("Hi!!! Your are getting data");
+  res.send(webMessage);
 });
 
+// 🚀 Start server
 app.listen(port, () => {
-  console.log(`This is running ${port}`);
+  console.log(`🚀 Server is running on ${port}`);
 });
