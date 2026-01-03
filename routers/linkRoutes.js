@@ -1,17 +1,25 @@
-import express from "express";
-const router = express.Router();
+const express = require("express");
+
 // import controller
-import { createLink,listOfLinks,readLink,updateLink,removeLink,updateLinksSequence } from "../controller/linkController.js";
+const {
+  createLink,
+  listOfLinks,
+  readLink,
+  updateLink,
+  removeLink,
+  updateLinksSequence,
+} = require("../controller/linkController");
 
 // import middleware
-import { requiredSignIn } from "../middlewares/authMiddleware.js";
+const { requiredSignIn } = require("../middlewares/authMiddleware");
+
+const router = express.Router();
 
 router.post("/add_link", requiredSignIn, createLink);
 router.get("/links", listOfLinks);
 router.get("/link/:linkId", requiredSignIn, readLink);
 router.put("/link/:linkId", requiredSignIn, updateLink);
 router.delete("/link/:linkId", removeLink);
-router.post('/update-links-order', requiredSignIn, updateLinksSequence);
+router.post("/update-links-order", requiredSignIn, updateLinksSequence);
 
-
-export default router;
+module.exports = router;

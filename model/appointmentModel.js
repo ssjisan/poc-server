@@ -1,7 +1,7 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 const { ObjectId } = mongoose.Schema;
 
-const Appointment = new mongoose.Schema(
+const AppointmentSchema = new mongoose.Schema(
   {
     doctorInfo: {
       type: ObjectId,
@@ -30,10 +30,10 @@ const Appointment = new mongoose.Schema(
     },
     message: {
       type: String,
-      required: false, // Assuming message is optional
+      required: false,
     },
   },
   { timestamps: true }
 );
 
-export default mongoose.model("Appointment", Appointment);
+module.exports = mongoose.model("Appointment", AppointmentSchema);

@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const exerciseVideoSchema = new mongoose.Schema(
   {
@@ -29,4 +29,4 @@ const exerciseVideoSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("ExerciseVideos", exerciseVideoSchema);
+module.exports = mongoose.model("ExerciseVideos", exerciseVideoSchema);

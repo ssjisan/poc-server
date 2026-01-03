@@ -1,124 +1,106 @@
-import { v2 as cloudinary } from "cloudinary";
-import dotenv from "dotenv";
-import Videos from "../model/videoModel.js";
-import slugify from "slugify"; // Assuming you have slugify installed
+const { v2: cloudinary } = require("cloudinary");
+const dotenv = require("dotenv");
+const Videos = require("../model/videoModel");
+const slugify = require("slugify");
 
 dotenv.config();
 
-const CLOUD_NAME = process.env.CLOUD_NAME;
-const API_KEY = process.env.API_KEY;
-const API_SECRET = process.env.API_SECRET;
-
 cloudinary.config({
-  cloud_name: CLOUD_NAME,
-  api_key: API_KEY,
-  api_secret: API_SECRET,
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.API_KEY,
+  api_secret: process.env.API_SECRET,
 });
 
+// Helper function to upload images to Cloudinary
 const uploadImageToCloudinary = async (imageBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      {
-        folder: "poc/videos", // Specify the folder name here
-      },
+      { folder: "poc/videos" },
       (error, result) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve({
-            url: result.secure_url,
-            public_id: result.public_id,
-          });
-        }
+        if (error) reject(error);
+        else resolve({ url: result.secure_url, public_id: result.public_id });
       }
     );
     stream.end(imageBuffer);
   });
 };
 
-export const uploadNewVideo = async (req, res) => {
+// Upload new video
+const uploadNewVideo = async (req, res) => {
   try {
     const { title, url } = req.body;
     const thumbnail = req.file;
 
-    // Upload the profile photo to Cloudinary
-    let uploadThumbnail = null;
-    if (thumbnail) {
-      uploadThumbnail = await uploadImageToCloudinary(thumbnail.buffer);
-    }
+    if (!title?.trim()) return res.json({ error: "Name is required" });
+    if (!url?.trim()) return res.json({ error: "Video URL is required" });
 
-    // Validate required fields
-    switch (true) {
-      case !title.trim():
-        return res.json({ error: "Name is required" });
-      case !url.trim():
-        return res.json({ error: "Video URL is required" });
-    }
-
-    // Create video type
     let videoType;
     const youtubeRegex =
       /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
-    const googleDriveRegex = /^(https?:\/\/)?(drive\.google\.com\/.*)$/; // Basic regex for Google Drive links
+    const googleDriveRegex = /^(https?:\/\/)?(drive\.google\.com\/.*)$/;
 
-    // Determine video type
-    if (youtubeRegex.test(url)) {
-      videoType = "youtube";
-    } else if (googleDriveRegex.test(url)) {
-      videoType = "google-drive";
-    } else {
-      return res.status(400).json({ error: "Invalid video URL" });
-    }
+    if (youtubeRegex.test(url)) videoType = "youtube";
+    else if (googleDriveRegex.test(url)) videoType = "google-drive";
+    else return res.status(400).json({ error: "Invalid video URL" });
 
-    // Generate slug from title
     const slug = slugify(title, {
       lower: true,
       remove: /[&\/\\#,+()$~%.'":*?<>{}]/g,
     });
-    // Create a new member document
+    const uploadedThumbnail = thumbnail
+      ? await uploadImageToCloudinary(thumbnail.buffer)
+      : null;
+
     const video = new Videos({
-      thumbnail: uploadThumbnail ? [uploadThumbnail] : [], // Store the uploaded image data
+      thumbnail: uploadedThumbnail ? [uploadedThumbnail] : [],
       title,
       url,
       slug,
       videoType,
     });
 
-    // Save the member to the database
     await video.save();
-
-    // Send the created member as a response
     res.status(201).json(video);
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// Controller for fetching all video
-
-export const getVideoList = async (req, res) => {
+// Get all videos
+const getVideoList = async (req, res) => {
   try {
-    // Fetch all albums from the database
     const videos = await Videos.find();
-    // Return the list of albums as a JSON response
     res.status(200).json(videos);
   } catch (err) {
-    console.error("Error fetching albums:", err);
+    console.error("Error fetching videos:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-export const updateVideoSequence = async (req, res) => {
+// Get limited videos with pagination
+const getLimitedVideo = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 1;
+    const skip = parseInt(req.query.skip) || 0;
+
+    const videos = await Videos.find().skip(skip).limit(limit);
+    const totalVideos = await Videos.countDocuments();
+    const hasMore = skip + limit < totalVideos;
+
+    res.status(200).json({ videos, hasMore });
+  } catch (err) {
+    console.error("Error fetching limited videos:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Update video sequence
+const updateVideoSequence = async (req, res) => {
   try {
     const { reorderedVideos } = req.body;
-
-    // Clear the current collection
     await Videos.deleteMany({});
-
-    // Insert the reordered videos
     await Videos.insertMany(reorderedVideos);
-
     res.status(200).json({ message: "Video sequence updated successfully" });
   } catch (err) {
     console.error("Error updating video sequence:", err);
@@ -126,112 +108,55 @@ export const updateVideoSequence = async (req, res) => {
   }
 };
 
-// Controller for Delete video
-
-export const deleteVideo = async (req, res) => {
+// Read a single video
+const readVideo = async (req, res) => {
   try {
-    // Extract slug from the request parameters (assuming it's passed in the URL)
     const { slug } = req.params;
+    const video = await Videos.findOne({ slug });
 
-    // Find the video by the slug and remove it from the database
-    const deletedVideo = await Videos.findOneAndDelete({ slug });
-
-    // If no video is found with the given slug
-    if (!deletedVideo) {
-      return res.status(404).json({ message: "Video not found" });
-    }
-    if (deletedVideo.thumbnail && deletedVideo.thumbnail.length > 0) {
-      try {
-        const publicId = deletedVideo.thumbnail[0].public_id;
-        await cloudinary.uploader.destroy(publicId);
-      } catch (error) {
-        res.json({ message: error.message });
-      }
-    }
-    // Respond with success message
-    res.status(200).json({ message: `Video deleted successfully` });
-  } catch (err) {
-    console.error("Error deleting video: ", err);
-
-    // Handle any errors
-    res
-      .status(500)
-      .json({ message: "Failed to delete video. Please try again later." });
-  }
-};
-
-// Controller for reading a single video
-export const readVideo = async (req, res) => {
-  try {
-    const { slug } = req.params; // This is correctly pulling albumId from the route parameters.
-    const video = await Videos.findOne({ slug }); // Use findById with albumId
-
-    if (!video) {
-      return res.status(404).json({ error: "Video not found" });
-    }
+    if (!video) return res.status(404).json({ error: "Video not found" });
     res.json(video);
-  } catch (error) {
-    console.error("Error fetching video:", error);
+  } catch (err) {
+    console.error("Error fetching video:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
-// Controller for Updating a single video
-
-export const updateVideo = async (req, res) => {
+// Update a single video
+const updateVideo = async (req, res) => {
   try {
     const { slug } = req.params;
     const { title, url } = req.body;
     const newThumbnail = req.file;
 
-    // Find the existing video by ID
     const video = await Videos.findOne({ slug });
-    if (!video) {
-      return res.status(404).json({ message: "Video not found" });
-    }
+    if (!video) return res.status(404).json({ message: "Video not found" });
 
-    // Update text fields
     video.title = title || video.title;
     video.url = url || video.url;
     video.slug = title
-      ? slugify(title, {
-          lower: true,
-          remove: /[&\/\\#,+()$~%.'":*?<>{}]/g,
-        })
+      ? slugify(title, { lower: true, remove: /[&\/\\#,+()$~%.'":*?<>{}]/g })
       : video.slug;
 
-    // Determine the video type based on the URL
     const youtubeRegex =
       /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
     const googleDriveRegex = /^(https?:\/\/)?(drive\.google\.com\/.*)$/;
 
-    if (youtubeRegex.test(url)) {
-      video.videoType = "youtube";
-    } else if (googleDriveRegex.test(url)) {
-      video.videoType = "google-drive";
-    } else {
-      return res.status(400).json({ error: "Invalid video URL" });
-    }
+    if (youtubeRegex.test(url)) video.videoType = "youtube";
+    else if (googleDriveRegex.test(url)) video.videoType = "google-drive";
+    else return res.status(400).json({ error: "Invalid video URL" });
 
-    // Handle thumbnail update if a new image is uploaded
     if (newThumbnail) {
-      // Remove the old thumbnail from Cloudinary
       if (video.thumbnail && video.thumbnail.length > 0) {
-        const publicId = video.thumbnail[0].public_id;
-        await cloudinary.uploader.destroy(publicId);
+        await cloudinary.uploader.destroy(video.thumbnail[0].public_id);
       }
-
-      // Upload the new thumbnail to Cloudinary
       const uploadedThumbnail = await uploadImageToCloudinary(
         newThumbnail.buffer
       );
-      video.thumbnail = [uploadedThumbnail]; // Update thumbnail data
+      video.thumbnail = [uploadedThumbnail];
     }
 
-    // Save updated video to the database
     await video.save();
-
-    // Return updated video
     res.status(200).json(video);
   } catch (err) {
     console.error("Error updating video:", err);
@@ -239,25 +164,34 @@ export const updateVideo = async (req, res) => {
   }
 };
 
-
-// Controller for fetching a limited number of videos
-export const getLimitedVideo = async (req, res) => {
+// Delete a video
+const deleteVideo = async (req, res) => {
   try {
-    // Parse limit and skip from query parameters
-    const limit = parseInt(req.query.limit) || 1; // Default to 5 if not provided
-    const skip = parseInt(req.query.skip) || 0; // Default to 0 if not provided
+    const { slug } = req.params;
+    const deletedVideo = await Videos.findOneAndDelete({ slug });
 
-    // Fetch videos from the database with limit and skip
-    const videos = await Videos.find().skip(skip).limit(limit);
+    if (!deletedVideo)
+      return res.status(404).json({ message: "Video not found" });
 
-    // Check if there are more videos left to load
-    const totalVideos = await Videos.countDocuments();
-    const hasMore = skip + limit < totalVideos;
+    if (deletedVideo.thumbnail && deletedVideo.thumbnail.length > 0) {
+      await cloudinary.uploader.destroy(deletedVideo.thumbnail[0].public_id);
+    }
 
-    // Respond with the videos and whether more videos are available
-    res.status(200).json({ videos, hasMore });
+    res.status(200).json({ message: "Video deleted successfully" });
   } catch (err) {
-    console.error("Error fetching limited videos:", err);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Error deleting video:", err);
+    res
+      .status(500)
+      .json({ message: "Failed to delete video. Please try again later." });
   }
+};
+
+module.exports = {
+  uploadNewVideo,
+  getVideoList,
+  getLimitedVideo,
+  updateVideoSequence,
+  readVideo,
+  updateVideo,
+  deleteVideo,
 };

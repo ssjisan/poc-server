@@ -1,21 +1,22 @@
-import express from "express";
-import dotenv from "dotenv";
-import mongoose from "mongoose";
-import morgan from "morgan";
-import cors from "cors";
-import authRoutes from "./routers/authRoutes.js";
-import albumRoutes from "./routers/albumRoutes.js";
-import videoRoutes from "./routers/videoRoutes.js";
-import profileRoutes from "./routers/profileRoutes.js";
-import appointmentRoutes from "./routers/appointmentRoutes.js";
-import treatmentsRoutes from "./routers/treatmentsRoutes.js";
-import blogPostRoutes from "./routers/blogPostRoutes.js";
-import linkRoutes from "./routers/linkRoutes.js";
-import formRoutes from "./routers/formRoutes.js";
-import exerciseVideoRoutes from "./routers/exerciseVideoRoutes.js";
+const express = require("express");
+const dotenv = require("dotenv");
+const mongoose = require("mongoose");
+const morgan = require("morgan");
+const cors = require("cors");
+
+const authRoutes = require("./routers/authRoutes");
+const albumRoutes = require("./routers/albumRoutes");
+const videoRoutes = require("./routers/videoRoutes");
+const profileRoutes = require("./routers/profileRoutes");
+const appointmentRoutes = require("./routers/appointmentRoutes");
+const treatmentsRoutes = require("./routers/treatmentsRoutes");
+const blogPostRoutes = require("./routers/blogPostRoutes");
+const linkRoutes = require("./routers/linkRoutes");
+const formRoutes = require("./routers/formRoutes");
+const exerciseVideoRoutes = require("./routers/exerciseVideoRoutes");
 
 dotenv.config();
-// exercise
+
 const app = express();
 
 // Connect to the database
@@ -23,8 +24,6 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("Database connected"))
   .catch((err) => console.error(err));
-
-// CORS configuration
 
 // Middlewares
 app.use(cors());

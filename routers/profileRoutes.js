@@ -1,15 +1,16 @@
-// profileRoutes.js
-import express from "express";
-import { requiredSignIn } from "../middlewares/authMiddleware.js";
-import {
+const express = require("express");
+const multer = require("multer");
+
+const { requiredSignIn } = require("../middlewares/authMiddleware");
+
+const {
   createProfile,
   listAllDoctors,
   deleteProfile,
   readProfile,
   updateProfile,
-  listAvailableDoctors
-} from "../controller/profileController.js";
-import multer from "multer";
+  listAvailableDoctors,
+} = require("../controller/profileController");
 
 // Multer configuration
 const storage = multer.memoryStorage();
@@ -25,9 +26,19 @@ router.post(
   upload.single("profilePhoto"),
   createProfile
 );
+
 router.get("/doctors", listAllDoctors);
 router.get("/availableDoctors", listAvailableDoctors);
+
 router.delete("/doctor/:profileId", requiredSignIn, deleteProfile);
+
 router.get("/doctor/:profileId", requiredSignIn, readProfile);
-router.put("/doctor/:profileId", requiredSignIn,upload.single("profilePhoto"), updateProfile);
-export default router;
+
+router.put(
+  "/doctor/:profileId",
+  requiredSignIn,
+  upload.single("profilePhoto"),
+  updateProfile
+);
+
+module.exports = router;

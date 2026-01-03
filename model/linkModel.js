@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const linkModal = new mongoose.Schema(
   {
@@ -22,4 +22,4 @@ const linkModal = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Links", linkModal);
+module.exports = mongoose.model("Links", linkModal);

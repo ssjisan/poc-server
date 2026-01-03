@@ -1,21 +1,14 @@
-import Treatments from "../model/treatmentsModel.js";
+const Treatments = require("../model/treatmentsModel");
 
-export const createTreatment = async (req, res) => {
+// Create a new treatment
+const createTreatment = async (req, res) => {
   try {
     const { title, subTitle } = req.body;
 
-    switch (true) {
-      case !title.trim():
-        return res.json({ error: "Title is required" });
-      case !subTitle.trim():
-        return res.json({ error: "Sub Title is required" });
-    }
+    if (!title?.trim()) return res.json({ error: "Title is required" });
+    if (!subTitle?.trim()) return res.json({ error: "Sub Title is required" });
 
-    const newTreatment = new Treatments({
-      title,
-      subTitle,
-    });
-
+    const newTreatment = new Treatments({ title, subTitle });
     await newTreatment.save();
     res.json(newTreatment);
   } catch (error) {
@@ -24,9 +17,10 @@ export const createTreatment = async (req, res) => {
   }
 };
 
-export const listOfTreatments = async (req, res) => {
+// List all treatments
+const listOfTreatments = async (req, res) => {
   try {
-    const treatments = await Treatments.find(); // Retrieve all journal entries
+    const treatments = await Treatments.find();
     res.json(treatments);
   } catch (error) {
     console.error("Error fetching treatments:", error);
@@ -34,46 +28,41 @@ export const listOfTreatments = async (req, res) => {
   }
 };
 
-export const readTreatment = async (req, res) => {
+// Read a single treatment by ID
+const readTreatment = async (req, res) => {
   try {
     const { treatmentId } = req.params;
-    const treatments = await Treatments.findById(treatmentId);
+    const treatment = await Treatments.findById(treatmentId);
 
-    if (!treatments) {
-      return res.status(404).json({ error: "Treatments not found" });
-    }
+    if (!treatment)
+      return res.status(404).json({ error: "Treatment not found" });
 
-    res.json(treatments);
+    res.json(treatment);
   } catch (error) {
-    console.error("Error fetching treatments:", error);
+    console.error("Error fetching treatment:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
-
-export const updateTreatment = async (req, res) => {
+// Update a treatment by ID
+const updateTreatment = async (req, res) => {
   try {
     const { treatmentId } = req.params;
     const { title, subTitle } = req.body;
 
-    // Check if all fields are provided and not empty
-    if (!title.trim()) {
+    if (!title?.trim())
       return res.status(400).json({ error: "Title is required" });
-    }
-    if (!subTitle.trim()) {
+    if (!subTitle?.trim())
       return res.status(400).json({ error: "Sub Title is required" });
-    }
 
-    // Find the treatment by ID and update the fields
     const updatedTreatment = await Treatments.findByIdAndUpdate(
       treatmentId,
       { title, subTitle },
-      { new: true } // Return the updated document
+      { new: true }
     );
 
-    if (!updatedTreatment) {
+    if (!updatedTreatment)
       return res.status(404).json({ error: "Treatment not found" });
-    }
 
     res.json(updatedTreatment);
   } catch (error) {
@@ -82,23 +71,26 @@ export const updateTreatment = async (req, res) => {
   }
 };
 
-
-export const deleteTreatment = async (req, res) => {
+// Delete a treatment by ID
+const deleteTreatment = async (req, res) => {
   try {
     const { treatmentId } = req.params;
-
-    // Find and delete the treatment by its ID
     const deletedTreatment = await Treatments.findByIdAndDelete(treatmentId);
 
-    // Check if the treatment was not found
-    if (!deletedTreatment) {
+    if (!deletedTreatment)
       return res.status(404).json({ error: "Treatment not found" });
-    }
 
-    // Return success response
     res.json({ message: "Treatment deleted successfully" });
   } catch (error) {
     console.error("Error deleting treatment:", error);
     res.status(500).json({ error: "Internal server error" });
   }
+};
+
+module.exports = {
+  createTreatment,
+  listOfTreatments,
+  readTreatment,
+  updateTreatment,
+  deleteTreatment,
 };

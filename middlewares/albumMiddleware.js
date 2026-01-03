@@ -1,4 +1,5 @@
-import multer from "multer";
+const multer = require("multer");
 
-export const upload = multer({ dest: "uploads" });
+const upload = multer({ dest: "uploads" });
 
+module.exports = { upload };

@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 const trearmentsSchema = new mongoose.Schema(
   {
     title: {
@@ -12,4 +12,4 @@ const trearmentsSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-export default mongoose.model("Treatments", trearmentsSchema);
+module.exports = mongoose.model("Treatments", trearmentsSchema);

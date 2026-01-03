@@ -1,14 +1,14 @@
-import express from "express";
-import { requiredSignIn } from "../middlewares/authMiddleware.js";
-import {
+const express = require("express");
+const { requiredSignIn } = require("../middlewares/authMiddleware");
+const {
   uploadNewExerciseVideo,
   getExerciseVideoList,
   updateExerciseVideo,
   deleteExerciseVideo,
   readExerciseVideo,
   updateExerciseVideoSequence,
-} from "../controller/exerciseVideoController.js";
-import multer from "multer";
+} = require("../controller/exerciseVideoController.js");
+const multer = require("multer");
 
 // Multer configuration
 const storage = multer.memoryStorage();
@@ -24,9 +24,18 @@ router.post(
 );
 
 router.get("/list-exercise-videos", getExerciseVideoList);
-router.post("/update-exercise-video-order", requiredSignIn, updateExerciseVideoSequence);
+router.post(
+  "/update-exercise-video-order",
+  requiredSignIn,
+  updateExerciseVideoSequence
+);
 router.delete("/exercise-video/:slug", requiredSignIn, deleteExerciseVideo);
 router.get("/exercise-video/:slug", readExerciseVideo);
-router.put("/exercise-video/:slug", requiredSignIn,upload.single("thumbnail"), updateExerciseVideo);
+router.put(
+  "/exercise-video/:slug",
+  requiredSignIn,
+  upload.single("thumbnail"),
+  updateExerciseVideo
+);
 
-export default router;
+module.exports = router;

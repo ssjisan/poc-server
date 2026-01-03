@@ -1,7 +1,7 @@
-import jwt from "jsonwebtoken";
-import UserModel from "../model/userModel.js";
+const jwt = require("jsonwebtoken");
+const UserModel = require("../model/userModel");
 
-export const requiredSignIn = (req, res, next) => {
+const requiredSignIn = (req, res, next) => {
   try {
     const decoded = jwt.verify(
       req.headers.authorization,
@@ -14,7 +14,7 @@ export const requiredSignIn = (req, res, next) => {
   }
 };
 
-export const isAdmin = async (req, res, next) => {
+const isAdmin = async (req, res, next) => {
   try {
     const user = await UserModel.findById(req.user._id);
     if (user.role !== 1) {
@@ -27,7 +27,7 @@ export const isAdmin = async (req, res, next) => {
   }
 };
 
-export const isSuperAdmin = async (req, res, next) => {
+const isSuperAdmin = async (req, res, next) => {
   try {
     const user = await UserModel.findById(req.user._id);
     if (user.role !== 0) {
@@ -38,4 +38,10 @@ export const isSuperAdmin = async (req, res, next) => {
   } catch (err) {
     res.status(401).json(err.message);
   }
+};
+
+module.exports = {
+  requiredSignIn,
+  isAdmin,
+  isSuperAdmin,
 };

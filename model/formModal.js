@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const formModal = new mongoose.Schema(
   {
@@ -17,4 +17,4 @@ const formModal = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Forms", formModal);
+module.exports = mongoose.model("Forms", formModal);

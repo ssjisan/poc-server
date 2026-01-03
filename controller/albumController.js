@@ -1,9 +1,9 @@
-import slugify from "slugify";
-import Albums from "../model/albumModel.js";
-import { v2 as cloudinary } from "cloudinary";
-import dotenv from "dotenv";
-import fs from "fs";
-import path from "path";
+const slugify = require("slugify");
+const Albums = require("../model/albumModel");
+const { v2: cloudinary } = require("cloudinary");
+const dotenv = require("dotenv");
+const fs = require("fs");
+const path = require("path");
 
 dotenv.config();
 
@@ -21,15 +21,10 @@ cloudinary.config({
 const uploadImageToCloudinary = async (imageBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      {
-        folder: "poc/poc album", // Specify the folder name here
-      },
+      { folder: "poc/poc album" },
       (error, result) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(result); // Return the full result for name and size processing
-        }
+        if (error) reject(error);
+        else resolve(result);
       }
     );
     stream.end(imageBuffer);
@@ -39,71 +34,52 @@ const uploadImageToCloudinary = async (imageBuffer) => {
 // Utility function to delete local files
 const deleteLocalFile = (filePath) => {
   fs.unlink(filePath, (err) => {
-    if (err) {
-      console.error(`Failed to delete local file: ${filePath}`);
-    } else {
-    }
+    if (err) console.error(`Failed to delete local file: ${filePath}`);
   });
 };
 
 // Controller to create an album
-export const uploadNewAlbum = async (req, res) => {
+const uploadNewAlbum = async (req, res) => {
   try {
     const { name } = req.body;
 
-    // Check if album name is provided
-    if (!name) {
+    if (!name)
       return res.status(400).json({ message: "Album name is required" });
-    }
 
     const images = req.files;
-
-    // Check if any images are uploaded
-    if (!images || images.length === 0) {
+    if (!images || images.length === 0)
       return res.status(400).json({ message: "No images uploaded" });
-    }
 
     const uploadedImages = [];
 
-    // Upload each image to Cloudinary
     for (const image of images) {
       const uploadResult = await uploadImageToCloudinary(image.buffer);
-
       uploadedImages.push({
         src: uploadResult.secure_url,
         public_id: uploadResult.public_id,
-        name: image.originalname, // Get original name from the uploaded file
-        size: (image.size / (1024 * 1024)).toFixed(2), // Convert size to MB
+        name: image.originalname,
+        size: (image.size / (1024 * 1024)).toFixed(2),
       });
     }
 
-    // Create a new album document
     const album = new Albums({
       name,
       slug: slugify(name, { lower: true }),
       images: uploadedImages,
     });
 
-    // Save the album to the database
     await album.save();
 
-    // Send the created album as a response
-    res.status(201).json({
-      message: "Album created successfully",
-      album,
-    });
+    res.status(201).json({ message: "Album created successfully", album });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
 // API for list of albums
-export const listOfAllAlbums = async (req, res) => {
+const listOfAllAlbums = async (req, res) => {
   try {
-    // Fetch all albums from the database
     const albums = await Albums.find();
-
-    // Return the list of albums as a JSON response
     res.status(200).json(albums);
   } catch (err) {
     console.error("Error fetching albums:", err);
@@ -112,14 +88,11 @@ export const listOfAllAlbums = async (req, res) => {
 };
 
 // Controller for reading a single album
-export const readAlbum = async (req, res) => {
+const readAlbum = async (req, res) => {
   try {
-    const { albumId } = req.params; // This is correctly pulling albumId from the route parameters.
-    const album = await Albums.findById(albumId); // Use findById with albumId
-
-    if (!album) {
-      return res.status(404).json({ error: "Album not found" });
-    }
+    const { albumId } = req.params;
+    const album = await Albums.findById(albumId);
+    if (!album) return res.status(404).json({ error: "Album not found" });
     res.json(album);
   } catch (error) {
     console.error("Error fetching album:", error);
@@ -127,18 +100,14 @@ export const readAlbum = async (req, res) => {
   }
 };
 
-// Controller for Delete Album from db
-export const deleteAlbum = async (req, res) => {
+// Controller for deleting an album
+const deleteAlbum = async (req, res) => {
   try {
     const { albumId } = req.params;
 
-    // Find the album by id
     const album = await Albums.findById(albumId);
-    if (!album) {
-      return res.status(404).json({ message: "Album not found" });
-    }
+    if (!album) return res.status(404).json({ message: "Album not found" });
 
-    // Delete images from Cloudinary
     for (const image of album.images) {
       try {
         await cloudinary.uploader.destroy(image.public_id);
@@ -147,7 +116,6 @@ export const deleteAlbum = async (req, res) => {
       }
     }
 
-    // Delete album from database
     await Albums.findByIdAndDelete(albumId);
 
     res
@@ -159,30 +127,22 @@ export const deleteAlbum = async (req, res) => {
 };
 
 // Update album controller
-
-export const updateAlbum = async (req, res) => {
+const updateAlbum = async (req, res) => {
   try {
     const { albumName } = req.body;
 
-    // Parse existingImages from request body
     let existingImages = [];
-    if (req.body.existingImages) {
+    if (req.body.existingImages)
       existingImages = JSON.parse(req.body.existingImages);
-    }
 
-    // Find the album by ID
     const album = await Albums.findById(req.params.albumId);
-    if (!album) {
-      return res.status(404).json({ message: "Album not found" });
-    }
+    if (!album) return res.status(404).json({ message: "Album not found" });
 
-    // Remove old images that are not in the existingImages array
     const imagesToRemove = album.images.filter(
       (image) =>
         !existingImages.some((img) => img.public_id === image.public_id)
     );
 
-    // Remove images from Cloudinary
     for (const image of imagesToRemove) {
       try {
         await cloudinary.uploader.destroy(image.public_id);
@@ -191,7 +151,6 @@ export const updateAlbum = async (req, res) => {
       }
     }
 
-    // Upload new images to Cloudinary
     const uploadedImages = [];
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
@@ -200,19 +159,16 @@ export const updateAlbum = async (req, res) => {
           src: uploadResult.secure_url,
           public_id: uploadResult.public_id,
           name: file.originalname,
-          size: (file.size / (1024 * 1024)).toFixed(2), // Convert size to MB
+          size: (file.size / (1024 * 1024)).toFixed(2),
         });
       }
     }
 
-    // Combine existing images and newly uploaded images
     const finalImages = [...existingImages, ...uploadedImages];
 
-    // Update album with new data
     album.name = albumName;
     album.images = finalImages;
 
-    // Save the updated album
     await album.save();
 
     res.status(200).json({ message: "Album updated successfully", album });
@@ -222,15 +178,12 @@ export const updateAlbum = async (req, res) => {
   }
 };
 
-//  Update Sequence of Album
-export const updateAlbumSequence = async (req, res) => {
+// Update album sequence
+const updateAlbumSequence = async (req, res) => {
   try {
     const { reorderedAlbums } = req.body;
 
-    // Clear the current collection
     await Albums.deleteMany({});
-
-    // Insert the reordered videos
     await Albums.insertMany(reorderedAlbums);
 
     res.status(200).json({ message: "Album sequence updated successfully" });
@@ -238,4 +191,13 @@ export const updateAlbumSequence = async (req, res) => {
     console.error("Error updating album sequence:", err);
     res.status(500).json({ message: "Internal server error" });
   }
+};
+
+module.exports = {
+  uploadNewAlbum,
+  listOfAllAlbums,
+  readAlbum,
+  deleteAlbum,
+  updateAlbum,
+  updateAlbumSequence,
 };

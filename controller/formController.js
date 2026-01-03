@@ -1,108 +1,91 @@
-import Form from "../model/formModal.js";
+const Form = require("../model/formModal");
 
-export const uploadForm = async (req, res) => {
+// Upload a new form
+const uploadForm = async (req, res) => {
   try {
-    
     const { title, link } = req.body;
 
     switch (true) {
-      case !title.trim():
+      case !title || !title.trim():
         return res.json({ error: "Title is required" });
-      case !link.trim():
+      case !link || !link.trim():
         return res.json({ error: "Link is required" });
     }
 
-    const newForm = new Form({
-      title,
-      link,
-    });
-
+    const newForm = new Form({ title, link });
     await newForm.save();
+
     res.json(newForm);
-  } catch (error) {
-    console.error("Error creating notice:", error);
+  } catch (err) {
+    console.error("Error creating form:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
-export const listOfForm = async (req, res) => {
+// List all forms
+const listOfForm = async (req, res) => {
   try {
-    const forms = await Form.find(); // Retrieve all journal entries
+    const forms = await Form.find();
     res.json(forms);
-  } catch (error) {
-    console.error("Error fetching forms:", error);
+  } catch (err) {
+    console.error("Error fetching forms:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
-
-export const readForm = async (req, res) => {
+// Read a single form by ID
+const readForm = async (req, res) => {
   try {
-    const { formId } = req.params; // Get the journal ID from the request params
-    const form = await Form.findById(formId); // Find the journal by ID
-
-    if (!form) {
-      return res.status(404).json({ error: "Form not found" }); // Return error if the journal doesn't exist
-    }
-
-    res.json(form); // Send the journal data as a response
-  } catch (error) {
-    console.error("Error fetching form:", error);
-    res.status(500).json({ error: "Internal server error" }); // Handle server errors
+    const { formId } = req.params;
+    const form = await Form.findById(formId);
+    if (!form) return res.status(404).json({ error: "Form not found" });
+    res.json(form);
+  } catch (err) {
+    console.error("Error fetching form:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
-export const removeForm = async (req, res) => {
+// Delete a form by ID
+const removeForm = async (req, res) => {
   try {
-    const { formId } = req.params; // Get the journal ID from the request parameters
-
-    // Find and delete the journal by ID
+    const { formId } = req.params;
     const deletedForm = await Form.findByIdAndDelete(formId);
-
-    if (!deletedForm) {
-      return res.status(404).json({ error: "Form not found" }); // Return error if the journal doesn't exist
-    }
-
-    res.json({ message: "Form deleted successfully" }); // Send success message
-  } catch (error) {
-    console.error("Error deleting form:", error);
-    res.status(500).json({ error: "Internal server error" }); // Handle server errors
+    if (!deletedForm) return res.status(404).json({ error: "Form not found" });
+    res.json({ message: "Form deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting form:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
-export const updateForm = async (req, res) => {
+// Update a form by ID
+const updateForm = async (req, res) => {
   try {
-    const { formId } = req.params; 
+    const { formId } = req.params;
     const { title, link } = req.body;
 
     const updatedForm = await Form.findByIdAndUpdate(
       formId,
-      {
-        title,
-        link,
-      },
-      { new: true, runValidators: true } // Return the updated journal and run validation
+      { title, link },
+      { new: true, runValidators: true }
     );
 
-    if (!updatedForm) {
-      return res.status(404).json({ error: 'Form not found' });
-    }
+    if (!updatedForm) return res.status(404).json({ error: "Form not found" });
 
-    res.json(updatedForm); // Send back the updated journal data
+    res.json(updatedForm);
   } catch (err) {
     console.error("Error updating form:", err);
-    res.status(500).json({ error: 'Internal server error' }); // Handle server errors
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
-export const updateFormsSequence = async (req, res) => {
+// Update forms sequence
+const updateFormsSequence = async (req, res) => {
   try {
     const { reorderedForms } = req.body;
 
-    // Clear the current collection
     await Form.deleteMany({});
-
-    // Insert the reordered forms
     await Form.insertMany(reorderedForms);
 
     res.status(200).json({ message: "Forms sequence updated successfully" });
@@ -110,4 +93,13 @@ export const updateFormsSequence = async (req, res) => {
     console.error("Error updating forms sequence:", err);
     res.status(500).json({ message: "Internal server error" });
   }
+};
+
+module.exports = {
+  uploadForm,
+  listOfForm,
+  readForm,
+  removeForm,
+  updateForm,
+  updateFormsSequence,
 };
