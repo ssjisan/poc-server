@@ -11,12 +11,17 @@ const albumSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    order: {
+      type: Number,
+      default: 0,
+    },
     images: [
       {
         src: { type: String, required: true },
         public_id: { type: String, required: true },
-        name: { type: String, required: true }, // Image name
-        size: { type: Number, required: true }, // Image size in bytes
+        name: { type: String, required: true },
+        size: { type: Number, required: true },
+        order: { type: Number, default: 0 },
       },
     ],
   },

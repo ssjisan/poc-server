@@ -1,42 +1,24 @@
 const express = require("express");
-const multer = require("multer");
-
-const { requiredSignIn } = require("../middlewares/authMiddleware");
-
+const router = express.Router();
+const { requiredSignIn } = require("../middlewares/authMiddleware.js");
 const {
-  uploadNewAlbum,
+  createAlbum,
+  downloadAlbum,
+  updateAlbumOrder,
+  updateAlbum,
   listOfAllAlbums,
   deleteAlbum,
   readAlbum,
-  updateAlbum,
-  updateAlbumSequence,
-} = require("../controller/albumController");
+  destroyImage,
+} = require("../controller/albumController.js");
 
-const router = express.Router();
-
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
-router.post(
-  "/upload_album",
-  requiredSignIn,
-  upload.array("images", 50),
-  uploadNewAlbum
-);
-
+router.post("/delete-image", requiredSignIn, destroyImage);
+router.post("/create-album", requiredSignIn, createAlbum);
+router.get("/:slug/download", requiredSignIn, downloadAlbum);
+router.post("/update-album-order", requiredSignIn, updateAlbumOrder);
 router.get("/albums", listOfAllAlbums);
-
 router.delete("/album/:albumId", requiredSignIn, deleteAlbum);
-
 router.get("/album/:albumId", readAlbum);
-
-router.put(
-  "/album/:albumId",
-  requiredSignIn,
-  upload.array("newImages", 50),
-  updateAlbum
-);
-
-router.post("/update-album-order", requiredSignIn, updateAlbumSequence);
+router.put("/album/:albumId", requiredSignIn, updateAlbum);
 
 module.exports = router;
